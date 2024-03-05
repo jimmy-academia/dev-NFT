@@ -19,16 +19,12 @@ def prepare_nft_data():
         data_files = map(lambda x: Path(f'../NFT_data/{x}/{project_name}.json'), ['trades', 'NFT_attributes', 'trait_system'])
 
         project_file = clean_dir/f'{project_name}.json'
-        tiny_project_file = tiny_dir/f'{project_name}.json'
 
         if not project_file.exists(): 
             nft_project_data = load_nft_project(project_name, clean_dir, data_files)
             dumpj(nft_project_data, project_file)
-        if not tiny_project_file.exists(): 
-            nft_project_data = load_nft_project(project_name, tiny_dir, data_files, subset=True)
-            dumpj(nft_project_data, tiny_project_file)
 
-def load_nft_project(project_name, tiny_dir, data_files, subset=False):
+def load_nft_project(project_name, tiny_dir, data_files):
 
     '''
     return:
@@ -43,8 +39,6 @@ def load_nft_project(project_name, tiny_dir, data_files, subset=False):
     trade_info, NFT_info, trait_system = map(loadj, data_files)
     NFT_info, trait_system = filter_nft_attributes(project_name, NFT_info, trait_system)
     nft_project_data = process_nft_trades(trade_info, NFT_info, trait_system)
-    if subset:
-        print('do subset things!')
     return nft_project_data
 
 def filter_nft_attributes(project_name: str, NFT_info: list, trait_system: dict) -> tuple:
@@ -93,7 +87,7 @@ def Augment_StepN(asset_traits, trait_system):
 def fetchinfo(transaction):
     return transaction['buyer_address'], transaction['price'], int(transaction['token_ids'][0])
 
-def process_nft_trades(trade_info, NFT_info, trait_system):
+def process_nft_trades(trade_info, NFT_info, trait_system, random_match=False):
     '''
     nft_project_data: dict_keys(['trait_system', 
     'asset_traits', 'item_counts', => size N
@@ -109,6 +103,8 @@ def process_nft_trades(trade_info, NFT_info, trait_system):
     # Process each transaction
     for transaction in trade_info:
         buyer_add, price, token_id = fetchinfo(transaction)
+        if random_match:
+            token_id = random.choice(token_id2asset.keys())
         if token_id in token_id2asset:
             asset_trait = token_id2asset['token_id']['trait']
             atuple = tuple(asset_trait)
@@ -124,42 +120,18 @@ def process_nft_trades(trade_info, NFT_info, trait_system):
             
             buyer_info[buyer_add]['budget'] += price
             buyer_info[buyer_add]['asset_ids'].append(aid)
+    nft_project_data = {}
+    nft_project_data['asset_traits'] = asset_info['asset_traits']
+    nft_project_data['item_counts'] = asset_info['item_counts']
+    nft_project_data['item_counts'] = asset_info['item_counts']
+    nft_project_data['buyer_budgets'] = []
+    nft_project_data['buyer_assets_ids'] = []
+    for buyer_add in buyer_info.keys():
+        nft_project_data['buyer_budgets'].append(buyer_info[buyer_add]['budget'])
+        nft_project_data['buyer_assets_ids'].append(buyer_info[buyer_add]['asset_ids'])
+    return nft_project_data
 
 
-def consolidate(asset_traits, token_id_list, trade_info, params):
-    buyer_add2bid = {}
-    buyer_budgets = []
-    buyer_assets = []
-    buyer_assets_ids = []
-    atuple2aid = {}
-    item_counts = []
-    new_asset_traits = []
-    # organized_trade = []
-    for transaction in tqdm(trade_info, ncols=88, desc='conso-iter-trade'):
-        buyer_add, price, token_id = fetchinfo(transaction, params)
-        if token_id in token_id_list:
-            asset = asset_traits[token_id_list.index(token_id)]
-            atuple = tuple(asset)
-            if atuple not in atuple2aid:
-                atuple2aid[atuple] = len(atuple2aid)
-                new_asset_traits.append(asset)
-                item_counts.append(1)
-            else:
-                item_counts[atuple2aid[atuple]] += 1
-            aid = atuple2aid[atuple]
-            if buyer_add in buyer_add2bid:
-                bid = buyer_add2bid[buyer_add]
-                buyer_budgets[bid] += price
-                buyer_assets[bid].append(asset)
-                buyer_assets_ids[bid].append(aid)
-            else:
-                buyer_add2bid[buyer_add] = bid = len(buyer_add2bid)
-                buyer_budgets.append(price)
-                buyer_assets.append([asset])
-                buyer_assets_ids.append([aid])
-            # organized_trade.append((bid, aid, price))
-    return new_asset_traits, item_counts, buyer_budgets, buyer_assets, buyer_assets_ids
 
-    
-   
+
 
