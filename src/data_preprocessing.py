@@ -125,14 +125,41 @@ def process_nft_trades(trade_info, NFT_info, trait_system):
             buyer_info[buyer_add]['budget'] += price
             buyer_info[buyer_add]['asset_ids'].append(aid)
 
-    # Post-process to adjust item counts and prepare output
-    print ('TODOTODOTODO!!!')
-    item_counts = [info['count'] for atuple, info in sorted(asset_info.items(), key=lambda x: x[1]['id'])]
-    for i, count in enumerate(item_counts):
-        if count > 5:
-            item_counts[i] = random.randint(1, 5)
-            new_asset_traits.append(new_asset_traits[i])
-            item_counts.append(random.randint(1, 3))
 
+def consolidate(asset_traits, token_id_list, trade_info, params):
+    buyer_add2bid = {}
+    buyer_budgets = []
+    buyer_assets = []
+    buyer_assets_ids = []
+    atuple2aid = {}
+    item_counts = []
+    new_asset_traits = []
+    # organized_trade = []
+    for transaction in tqdm(trade_info, ncols=88, desc='conso-iter-trade'):
+        buyer_add, price, token_id = fetchinfo(transaction, params)
+        if token_id in token_id_list:
+            asset = asset_traits[token_id_list.index(token_id)]
+            atuple = tuple(asset)
+            if atuple not in atuple2aid:
+                atuple2aid[atuple] = len(atuple2aid)
+                new_asset_traits.append(asset)
+                item_counts.append(1)
+            else:
+                item_counts[atuple2aid[atuple]] += 1
+            aid = atuple2aid[atuple]
+            if buyer_add in buyer_add2bid:
+                bid = buyer_add2bid[buyer_add]
+                buyer_budgets[bid] += price
+                buyer_assets[bid].append(asset)
+                buyer_assets_ids[bid].append(aid)
+            else:
+                buyer_add2bid[buyer_add] = bid = len(buyer_add2bid)
+                buyer_budgets.append(price)
+                buyer_assets.append([asset])
+                buyer_assets_ids.append([aid])
+            # organized_trade.append((bid, aid, price))
+    return new_asset_traits, item_counts, buyer_budgets, buyer_assets, buyer_assets_ids
+
+    
    
 
