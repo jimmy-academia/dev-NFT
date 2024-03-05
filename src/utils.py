@@ -15,6 +15,9 @@ import inspect
 
 NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat Ape Club', 'Heterosis', 'Roaring Leader', 'StepN']
 
+Baseline_Methods = ['Random', 'Favorite', 'main']
+Breeding_Types = ['Homogeneous', 'ChildProject', 'Heterogeneous']
+
 def set_seeds(seed):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
