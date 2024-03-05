@@ -1,7 +1,7 @@
 import random
 from collections import defaultdict
 from typing import Tuple, Dict
-
+from tqdm import tqdm
 from utils import *
 
 def prepare_nft_data():
@@ -21,8 +21,11 @@ def prepare_nft_data():
         project_file = clean_dir/f'{project_name}.json'
 
         if not project_file.exists(): 
+            print(f'data_preprocessing: preparing {project_file}...')
             nft_project_data = load_nft_project(project_name, clean_dir, data_files)
             dumpj(nft_project_data, project_file)
+        else:
+            print(f'data_preprocessing: {project_file} exists')
 
 def load_nft_project(project_name, tiny_dir, data_files):
 
@@ -38,7 +41,7 @@ def load_nft_project(project_name, tiny_dir, data_files):
     '''
     trade_info, NFT_info, trait_system = map(loadj, data_files)
     NFT_info, trait_system = filter_nft_attributes(project_name, NFT_info, trait_system)
-    nft_project_data = process_nft_trades(trade_info, NFT_info, trait_system)
+    nft_project_data = process_nft_trades(trade_info['result'], NFT_info, trait_system)
     return nft_project_data
 
 def filter_nft_attributes(project_name: str, NFT_info: list, trait_system: dict) -> tuple:
@@ -68,6 +71,7 @@ def filter_nft_attributes(project_name: str, NFT_info: list, trait_system: dict)
 
     if project_name == 'StepN':
         NFT_info, trait_system = Augment_StepN(NFT_info, trait_system)
+    return NFT_info, trait_system
 
 def Augment_StepN(asset_traits, trait_system):
     names = ['Efficiency', 'Comfort', 'Durability', 'Luck', 'Efficiency-lv1', 'Comfort-lv1', 'Durability-lv1', 'Luck-lv1', 'Efficiency-lv2', 'Comfort-lv2', 'Durability-lv2', 'Luck-lv2', 'Gem',]
@@ -85,7 +89,7 @@ def Augment_StepN(asset_traits, trait_system):
     return new_asset_traits, trait_system
 
 def fetchinfo(transaction):
-    return transaction['buyer_address'], transaction['price'], int(transaction['token_ids'][0])
+    return transaction['buyer_address'], transaction['price'], transaction['token_ids'][0]
 
 def process_nft_trades(trade_info, NFT_info, trait_system, random_match=False):
     '''
@@ -101,12 +105,12 @@ def process_nft_trades(trade_info, NFT_info, trait_system, random_match=False):
 
     token_id2asset = {x['tokenId']:x for x in NFT_info}
     # Process each transaction
-    for transaction in trade_info:
+    for transaction in tqdm(trade_info, desc='Processing transactions', ncols=88):
         buyer_add, price, token_id = fetchinfo(transaction)
         if random_match:
             token_id = random.choice(token_id2asset.keys())
         if token_id in token_id2asset:
-            asset_trait = token_id2asset['token_id']['trait']
+            asset_trait = token_id2asset[token_id]['trait']
             atuple = tuple(asset_trait)
             
             if atuple not in asset_info['atuples']:
@@ -120,15 +124,13 @@ def process_nft_trades(trade_info, NFT_info, trait_system, random_match=False):
             
             buyer_info[buyer_add]['budget'] += price
             buyer_info[buyer_add]['asset_ids'].append(aid)
-    nft_project_data = {}
-    nft_project_data['asset_traits'] = asset_info['asset_traits']
-    nft_project_data['item_counts'] = asset_info['item_counts']
-    nft_project_data['item_counts'] = asset_info['item_counts']
-    nft_project_data['buyer_budgets'] = []
-    nft_project_data['buyer_assets_ids'] = []
-    for buyer_add in buyer_info.keys():
-        nft_project_data['buyer_budgets'].append(buyer_info[buyer_add]['budget'])
-        nft_project_data['buyer_assets_ids'].append(buyer_info[buyer_add]['asset_ids'])
+            
+    nft_project_data = {
+        'asset_traits': asset_info['asset_traits'],
+        'item_counts': asset_info['item_counts'],
+        'buyer_budgets': [buyer_info[buyer_add]['budget'] for buyer_add in buyer_info.keys()],
+        'buyer_assets_ids': [buyer_info[buyer_add]['asset_ids'] for buyer_add in buyer_info.keys()]
+    }
     return nft_project_data
 
 
