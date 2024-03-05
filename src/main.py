@@ -25,6 +25,7 @@ def main():
     ablation_tests()
     runtime_tests()
     case_study()
+    large_scale_dupliate()
 
 if __name__ == "__main__":
     main()
