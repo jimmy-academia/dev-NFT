@@ -20,9 +20,10 @@ def run_experiments():
         args.nft_project_name = nft_project_name
         for _method in Baseline_Methods:
             for _breeding in Breeding_Types:
+                print(f'run [{nft_project_name}, {_method}, {_breeding}] experiment')
                 args.breeding_type = _breeding
                 Solver = get_solver(args, _method)
                 Solver.solve() # recommend pricing and NFT purchase for each user
 
-                Solver.evalate() # evaluate buyer utility, seller revenue
-                print('save files')
+                Solver.evaluate() # evaluate buyer utility, seller revenue
+                print('save files!!')

@@ -33,7 +33,6 @@ def set_seeds(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = True
 
-
 class NamespaceEncoder(json.JSONEncoder):
   def default(self, obj):
     if isinstance(obj, argparse.Namespace):
@@ -106,4 +105,4 @@ def inclusive_range(end, step):
     return range(step, end+step, step)
 
 def batch_indexes(total, batch_size):
-    return (range(i, min(i + batch_size, total)) for i in range(0, total, batch_size))
+    return (list(range(i, min(i + batch_size, total))) for i in range(0, total, batch_size))

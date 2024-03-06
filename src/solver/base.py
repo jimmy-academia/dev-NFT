@@ -7,49 +7,49 @@ class BaseSolver:
         self.args = args
         nft_project_data = loadj(f'../NFT_data/clean/{args.nft_project_name}.json')
         self.nftP = NFTProject(nft_project_data, args.setN, args.setM)
-        self.tensorize()        
+        self.prepare_tensors()
         self.breeding_type = args.breeding_type
         self.set_utilities_values()
-        
 
-    def tensorize(self):
+    def tensorize(self, label_vec):
+        # variables
         num_selections_list = [len(options) for (_, options) in self.nftP.trait_dict.items()]
-        flat_one_hot = []
-        for item_vector in self.nftP.item_vec_list:
-            item_one_hot = [torch.zeros(num_selections).to(self.args.device) for num_selections in num_selections_list]
-            for value, one_hot in zip(item_vector, item_one_hot):
-                one_hot[value] = 1
-            flat_one_hot.append(torch.cat(item_one_hot))
-        self.nft_attributes = torch.stack(flat_one_hot)
+        max_selections = max(num_selections_list)
+        num_attributes = len(num_selections_list)
 
-        flattened_preferences = []
-        for user_preferences in self.nftP.user_preferences:
-            flattened_preferences.append(torch.Tensor([item for sublist in user_preferences for item in sublist])) 
-        self.user_preferences = torch.stack(flattened_preferences).to(self.args.device) + 1
+        # tensorize
+        label_vec_tensor = torch.LongTensor(label_vec).to(self.args.device)
+        label_vec_tensor = label_vec_tensor.unsqueeze(2) if len(label_vec_tensor.shape) == 2 else label_vec_tensor
+        binary = torch.zeros(label_vec_tensor.shape[0], num_attributes, max_selections).to(self.args.device)
+        binary.scatter_(2, label_vec_tensor, 1)
+        return binary.view(label_vec_tensor.shape[0], -1)
+
+    def prepare_tensors(self):
+        self.nft_attributes = self.tensorize(self.nftP.item_attributes)
+        self.buyer_preferences = self.tensorize(self.nftP.user_preferences)
+        self.buyer_preferences = torch.softmax(self.buyer_preferences, dim=1)
+        buyer_budgets = torch.Tensor(self.nftP.user_budgets).to(self.args.device)
+        # scale to  [10, 100]
+        buyer_budgets.clamp_(min=0)  # Ensure that the minimum value is 0
+        buyer_budgets.sub_(buyer_budgets.min()).div_(buyer_budgets.max() - buyer_budgets.min()).mul_(90).add_(10)
+        self.buyer_budgets = buyer_budgets
+        self.nft_counts = torch.LongTensor(self.nftP.item_counts).to(self.args.device)
 
     def set_utilities_values(self):
         self.child_population_factor = 1
 
-        def calculate_raw_value(item_vec_list, trait_counts, args):
+        def calculate_raw_value(item_vec_list, trait_counts, args, M):
             raw_values = []
             for item_vec in item_vec_list:
                 value = 0
                 for attr_id, count in zip(item_vec, trait_counts):
-                    value += torch.log(torch.Tensor([args.M / max(1, count[attr_id])]))
+                    value += torch.log(torch.Tensor([M / max(1, count[attr_id])]))
                 raw_values.append(value)
             return torch.cat(raw_values).to(args.device)
 
-        def calculate_alpha(raw_values, user_budgets, N):
-            total_raw_value = total_budget = 0
-            for i in range(N):
-                total_raw_value += sum([raw_values[aid] for aid in self.nftP.data['buyer_assets_ids'][i % N] if aid < len(raw_values)])
-                total_budget += user_budgets[i]
-            return total_budget / total_raw_value
-
-        raw_values = calculate_raw_value(self.nftP.item_vec_list, self.nftP.trait_counts, self.args)
-        self.alpha = calculate_alpha(raw_values, self.nftP.user_budgets, self.nftP.N)
+        raw_values = calculate_raw_value(self.nftP.item_attributes, self.nftP.trait_counts, self.args, self.nftP.M)
+        self.alpha = sum(self.nftP.user_budgets) / sum(raw_values)
         self.Vj = raw_values * self.alpha
-
 
     def solve(self):
         '''
@@ -60,16 +60,19 @@ class BaseSolver:
         raise NotImplementedError
 
     def evaluate(self):
-        # assert budget constraints, fix pricing and clip holdings if exceed
-        self.holdings = torch.where(self.holdings * self.pricings > self.nftP.user_budgets, self.nftP.user_budgets/self.pricings, self.holdings)
-        
+        print('evaluating....')
+        epsilon = 1e-6
+        self.holdings.clamp_(min=0)
+        self.pricing.clamp_(min=0)
+        self.holdings *= torch.clamp(self.nft_counts / (self.holdings.sum(0)+epsilon), max=1) ## fit item constraints
+        self.holdings *= torch.clamp(self.buyer_budgets / ((self.holdings * self.pricing).sum(1)+epsilon), max=1).view(-1, 1) ## fit budget constraints
         # batch process buyers for buyer utility
         self.utilities = []
-        for batch_users in batch_indexes(self.nftP.N, 1000):
+        for batch_users in batch_indexes(self.nftP.N, 100):
             self.utilities.append(self.calculate_buyer_utilities(
                 batch_users,
                 self.holdings[batch_users],
-                self.nftP.user_budgets[batch_users],
+                self.buyer_budgets[batch_users],
                 self.pricing,   
             ))
         self.utilities = torch.cat(self.utilities, dim=0)
@@ -90,9 +93,9 @@ class BaseSolver:
         chunk_size = 32 
         subtotals = []
         for sub_batch in batch_indexes(len(holdings), chunk_size):
-            subtotals.append((holdings[sub_batch].unsqueeze(2) * self.Att).sum(1))
+            subtotals.append((holdings[sub_batch].unsqueeze(2) * self.nft_attributes).sum(1))
         subtotals = torch.cat(subtotals, dim=0) + 1
-        U_coll = (torch.log(subtotals) * self.Air[user_index]).sum(1)
+        U_coll = (torch.log(subtotals) * self.buyer_preferences[user_index]).sum(1)
 
         R = budgets - (holdings * pricing).sum(1)
 
