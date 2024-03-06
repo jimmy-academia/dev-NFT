@@ -4,6 +4,7 @@ import json
 import argparse 
 import random
 import numpy as np
+from types import SimpleNamespace
 
 from pathlib import Path
 
@@ -19,6 +20,9 @@ nft_project_names = [''.join(Project_Name.split()).lower() for Project_Name in N
 Baseline_Methods = ['Random']
 # Baseline_Methods = ['Random', 'Favorite', 'main']
 Breeding_Types = ['Homogeneous', 'ChildProject', 'Heterogeneous']
+
+default_args = SimpleNamespace()
+default_args.device = torch.device("cuda:0")
 
 def set_seeds(seed):
     random.seed(seed)

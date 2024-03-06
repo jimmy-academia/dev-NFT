@@ -1,5 +1,4 @@
 from solver import get_solver
-from types import SimpleNamespace
 from utils import *
 
 '''
@@ -13,7 +12,7 @@ collect results from file and visualize => save into figures/tables...
 '''
 
 def run_experiments():
-    args = SimpleNamespace()
+    args = default_args
     args.setN = None
     args.setM = None
 

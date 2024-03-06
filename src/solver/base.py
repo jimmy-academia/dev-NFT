@@ -1,97 +1,54 @@
 import torch
 from utils import *
-
-class NFTProject:
-    def __init__(self, nft_project_data, setN, setM):
-        self.N = setN if setN is not None else len(nft_project_data['buyer_budgets'])
-        self.M = setM if setM is not None else len(nft_project_data['asset_traits'])
-        self.trait_dict = nft_project_data['trait_system']
-        self.item_trait_vectorize(nft_project_data['asset_traits'])
-        self.compute_trait_stats() 
-        self.item_count = nft_project_data['item_counts']
-        self.get_user_preferences(nft_project_data['buyer_assets_ids'], nft_project_data['asset_traits'])
-        self.get_user_budgets(nft_project_data['buyer_budgets'])
-
-    def item_trait_vectorize(self, asset_traits):
-        self.item_vec_list = []
-        for item in asset_traits[:self.M]:
-            item_vec = []
-            for (trait, options), choice in zip(self.trait_dict.items(), item):
-                try:
-                    item_vec.append(options.index(choice))
-                except:
-                    check()
-            self.item_vec_list.append(item_vec)
-
-    def compute_trait_stats(self):
-        self.trait_counts = []
-        for trait, options in self.trait_dict.items():
-            self.trait_counts.append([1 for __ in options])
-        for item_vec in self.item_vec_list:
-            for t, choice in enumerate(item_vec):
-                self.trait_counts[t][choice] += 1
-
-    def get_user_preferences(self, buyer_assets_ids, asset_traits):
-        self.user_preferences = []
-        for __ in range(self.N):
-            user_pref = []
-            for trait, options in self.trait_dict.items():
-                user_pref.append([0 for option in options])
-            self.user_preferences.append(user_pref)
-        for i in range(self.N):
-            attr_list = asset_traits[buyer_assets_ids[i]]
-            for attr in attr_list:
-                for t, (trait, options) in enumerate(self.trait_dict.items()):
-                    self.user_preferences[i][t][options.index(attr[t])] +=1
-
-    def get_user_budgets(self, buyer_budgets):
-        print('do normalization??!!!')
-        self.user_budgets = buyer_budgets
-
+from .project import NFTProject
 
 class BaseSolver:
     def __init__(self, args):
+        self.args = args
         nft_project_data = loadj(f'../NFT_data/clean/{args.nft_project_name}.json')
         self.nftP = NFTProject(nft_project_data, args.setN, args.setM)
+        self.tensorize()        
         self.breeding_type = args.breeding_type
         self.set_utilities_values()
+        
+
+    def tensorize(self):
+        num_selections_list = [len(options) for (_, options) in self.nftP.trait_dict.items()]
+        flat_one_hot = []
+        for item_vector in self.nftP.item_vec_list:
+            item_one_hot = [torch.zeros(num_selections).to(self.args.device) for num_selections in num_selections_list]
+            for value, one_hot in zip(item_vector, item_one_hot):
+                one_hot[value] = 1
+            flat_one_hot.append(torch.cat(item_one_hot))
+        self.nft_attributes = torch.stack(flat_one_hot)
+
+        flattened_preferences = []
+        for user_preferences in self.nftP.user_preferences:
+            flattened_preferences.append(torch.Tensor([item for sublist in user_preferences for item in sublist])) 
+        self.user_preferences = torch.stack(flattened_preferences).to(self.args.device) + 1
 
     def set_utilities_values(self):
         self.child_population_factor = 1
 
-        print('=====todo======')
-        nsel_list = [len(options) for (__, options) in self.nftP.trait_dict.items()]
-        flatonehot = []
-        for item_vec in self.nftP.item_vec_list:
-            itemonehot = []
-            for x, nsel in zip(item_vec, nsel_list):
-                onehot = torch.zeros(nsel)
-                onehot[x] = 1
-                itemonehot.append(onehot)
-            flatonehot.append(torch.cat(itemonehot))
-        self.Att = torch.stack(flatonehot).to(self.args.device)
+        def calculate_raw_value(item_vec_list, trait_counts, args):
+            raw_values = []
+            for item_vec in item_vec_list:
+                value = 0
+                for attr_id, count in zip(item_vec, trait_counts):
+                    value += torch.log(torch.Tensor([args.M / max(1, count[attr_id])]))
+                raw_values.append(value)
+            return torch.cat(raw_values).to(args.device)
 
-        flatpreferences = []
-        for user_pref in self.nftP.user_preferences:
-            flatpreferences.append(torch.Tensor([it for sub in user_pref for it in sub])) 
-        self.Air = torch.stack(flatpreferences).to(self.args.device) + 1
+        def calculate_alpha(raw_values, user_budgets, N):
+            total_raw_value = total_budget = 0
+            for i in range(N):
+                total_raw_value += sum([raw_values[aid] for aid in self.nftP.data['buyer_assets_ids'][i % N] if aid < len(raw_values)])
+                total_budget += user_budgets[i]
+            return total_budget / total_raw_value
 
-        raw_value = []
-        for item_vec in self.nftP.item_vec_list:
-            u = 0
-            for attr_id, count in zip(item_vec, self.nftP.trait_counts):
-                u += torch.log(torch.Tensor([self.args.M / max(1, count[attr_id])]))
-            raw_value.append(u)
-        raw_value = torch.cat(raw_value).to(self.args.device)
-        
-        origN = self.args.N // self.args.duplicate
-        total_raw_value = total_budget = 0
-        for i in range(self.args.N):
-            total_raw_value += sum([raw_value[aid] for aid in self.nftP.data['buyer_assets_ids'][i % origN] if aid < len(self.nftP.item_vec_list)])
-            total_budget += self.nftP.user_budgets[i]
-
-        self.alpha = total_budget/total_raw_value 
-        self.Vj = raw_value * self.alpha
+        raw_values = calculate_raw_value(self.nftP.item_vec_list, self.nftP.trait_counts, self.args)
+        self.alpha = calculate_alpha(raw_values, self.nftP.user_budgets, self.nftP.N)
+        self.Vj = raw_values * self.alpha
 
 
     def solve(self):
@@ -148,75 +105,25 @@ class BaseSolver:
             return U_breeding
         
         # calculate probability * expectation up to topk
-        probability = torch.take(holdings, self.ranked_parent_nfts[user_index])
-        # modify expectation value by parent population factor
-        # accumulate the parent population factor for next round
-        cumulative_probability = 0
+        parents = self.ranked_parent_nfts[user_index]
+        parent_nft_probs = [torch.gather(holdings, 1, parents[..., p]) for p in range(parents.shape[-1])]
+        probability = torch.prod(torch.stack(parent_nft_probs), dim=0)
+        expectation = self.ranked_paraent_expectations[user_index]
 
-        for prob, exp in zip(probability, expectation):
-            proportion = min(1, (self.breeding_topk - cumulative_probability) / prob)
-            U_breeding += prob * exp * proportion
-            cumulative_probability += prob
-            if cumulative_probability >= self.breeding_topk:
-                break
+        cum_prob = torch.cumsum(probability, dim=1)
+        selection_mask = torch.where(cum_prob > self.breeding_topk, probability, torch.zeros_like(probability))
 
         if self.breeding_type == 'homogeneous':
-            parent_population_factor = self.nftP.item_count[self.ranked_parent_nfts[user_index]]
-            expectation *= parent_population_factor
-            self.ranked_paraent_expectations[user_index] = expectation
-        else:
-            expectation = self.ranked_paraent_expectations[user_index]
+            # calculate frequencies based on selection_mask 
+            parent_attr_freq = torch.stack([self.nft_attributes[parents[..., p]]*selection_mask for p in range(parents.shape[-1])]).sum(0)
+            # adjust expectation
+            child_population_factor = (torch.stack([self.nft_attributes[parents[..., p]] for p in range(parents.shape[-1])]) * parent_attr_freq).sum(0)
+            expectation = expectation / (1+ child_population_factor/10)
+            print('check!!')
+
+        U_breeding = (selection_mask * expectation).sum(1)
 
         return U_breeding
                 
-    def breeding_utility(self, user_index):
-        cumulative_probability = 0
-        selection_probabilities = []
-        selection_expectations = []
-        selected_parent_sets = []
 
-        for parent_set in self.get_ranked_parent_sets(user_index):
-            if cumulative_probability >= self.breeding_topk:
-                break
-            
-            probability, expectation = self.calculate_parent_set_utility(parent_set)
-            cumulative_probability += probability
-
-            selection_probabilities.append(probability)
-            selection_expectations.append(expectation)
-            selected_parent_sets.append(parent_set)
-
-        if self.breeding_type == 'homogeneous':
-            attribute_frequencies = self.calculate_dynamic_frequencies(selected_parent_sets)
-            adjusted_expectations = self.adjust_expectations(selection_expectations, attribute_frequencies)
-            utility = self.calculate_final_utility(selection_probabilities, adjusted_expectations)
-        else:
-            utility = sum(prob * exp for prob, exp in zip(selection_probabilities, selection_expectations))
-        
-        return utility
-
-def calculate_parent_set_utility(self, parent_set):
-    # Calculate and return the probability and expectation for a given parent set
-    # This is a placeholder; you'll need to implement based on your model's logic
-    return probability, expectation
-
-def calculate_dynamic_frequencies(self, selected_parent_sets):
-    # Dynamically calculate the frequencies of attributes across selected parent sets
-    # This function should return a structure (like a dictionary) mapping attributes to their frequencies
-    frequencies = {}
-    # Implement frequency calculation
-    return frequencies
-
-def adjust_expectations(self, expectations, frequencies):
-    # Adjust the expectations based on attribute frequencies
-    adjusted = []
-    for expectation in expectations:
-        # Modify expectation based on frequencies
-        adjusted.append(modified_expectation)
-    return adjusted
-
-def calculate_final_utility(self, probabilities, expectations):
-    # Calculate the final utility by applying adjusted expectations to the probabilities
-    utility = sum(prob * exp for prob, exp in zip(probabilities, expectations))
-    return utility
 
