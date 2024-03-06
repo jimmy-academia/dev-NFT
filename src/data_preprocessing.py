@@ -9,13 +9,10 @@ def prepare_nft_data():
     load and prepare nft data into [nft_project_data] and save into files
     '''
     data_dir = Path('../NFT_data')
-    clean_dir, tiny_dir = map(lambda x: data_dir / x, ['clean', 'tiny'])
+    clean_dir = data_dir/'clean'
     clean_dir.mkdir(parents=True, exist_ok=True)
-    tiny_dir.mkdir(parents=True, exist_ok=True)
 
-    for Project_Name in NFT_Projects:
-        project_name = ''.join(Project_Name.split()).lower()
-        
+    for project_name in nft_project_names:        
         data_files = map(lambda x: Path(f'../NFT_data/{x}/{project_name}.json'), ['trades', 'NFT_attributes', 'trait_system'])
 
         project_file = clean_dir/f'{project_name}.json'
@@ -126,14 +123,11 @@ def process_nft_trades(trade_info, NFT_info, trait_system, random_match=False):
             buyer_info[buyer_add]['asset_ids'].append(aid)
             
     nft_project_data = {
+        'trait_system': trait_system,
         'asset_traits': asset_info['asset_traits'],
         'item_counts': asset_info['item_counts'],
         'buyer_budgets': [buyer_info[buyer_add]['budget'] for buyer_add in buyer_info.keys()],
         'buyer_assets_ids': [buyer_info[buyer_add]['asset_ids'] for buyer_add in buyer_info.keys()]
     }
     return nft_project_data
-
-
-
-
 

@@ -14,8 +14,10 @@ import code
 import inspect
 
 NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat Ape Club', 'Heterosis', 'Roaring Leader', 'StepN']
+nft_project_names = [''.join(Project_Name.split()).lower() for Project_Name in NFT_Projects]
 
-Baseline_Methods = ['Random', 'Favorite', 'main']
+Baseline_Methods = ['Random']
+# Baseline_Methods = ['Random', 'Favorite', 'main']
 Breeding_Types = ['Homogeneous', 'ChildProject', 'Heterogeneous']
 
 def set_seeds(seed):
@@ -98,3 +100,6 @@ def set_plotter():
 
 def inclusive_range(end, step):
     return range(step, end+step, step)
+
+def batch_indexes(total, batch_size):
+    return (range(i, min(i + batch_size, total)) for i in range(0, total, batch_size))

@@ -22,10 +22,10 @@ def main():
 
     # do different experiments
     run_experiments() # run all experiments for each baseline methods
-    ablation_tests()
-    runtime_tests()
-    case_study()
-    large_scale_dupliate()
+    # ablation_tests()
+    # runtime_tests()
+    # case_study()
+    # large_scale_dupliate()
 
 if __name__ == "__main__":
     main()
