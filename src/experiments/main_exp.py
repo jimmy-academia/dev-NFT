@@ -12,9 +12,11 @@ collect results from file and visualize => save into figures/tables...
 '''
 
 def run_experiments():
-    args = default_args
+    args = default_args()
     args.setN = None
     args.setM = None
+    args.checkpoint_dir = args.ckpt_dir / 'main_exp'
+    args.checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
     for nft_project_name in nft_project_names:
         args.nft_project_name = nft_project_name
@@ -27,3 +29,12 @@ def run_experiments():
 
                 Solver.evaluate() # evaluate buyer utility, seller revenue
                 print('save files!!')
+                Result = {
+                    'pricing': Solver.pricing, 
+                    'holdings': Solver.holdings, 
+                    'buyer_utilities': Solver.buyer_utilities, 
+                    'seller_revenue': Solver.seller_revenue,
+                    'buyer_budgets': Solver.buyer_budgets,
+                    'nft_counts': Solver.nft_counts,
+                }
+                dumpj(deep_to_pylist(Result), args.checkpoint_dir / f'{nft_project_name}_{_method}_{_breeding}.json')

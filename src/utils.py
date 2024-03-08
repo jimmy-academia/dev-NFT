@@ -16,13 +16,26 @@ import inspect
 
 NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat Ape Club', 'Heterosis', 'Roaring Leader', 'StepN']
 nft_project_names = [''.join(Project_Name.split()).lower() for Project_Name in NFT_Projects]
+min_purchase = [6, 1, 1, 1, 1, 1, 1]
 
 Baseline_Methods = ['Random']
-# Baseline_Methods = ['Random', 'Favorite', 'main']
-Breeding_Types = ['Homogeneous', 'ChildProject', 'Heterogeneous']
+# Baseline_Methods = ['Random', 'Favorite', 'Main']
+Breeding_Types = ['None', 'Homogeneous', 'ChildProject', 'Heterogeneous']
 
-default_args = SimpleNamespace()
-default_args.device = torch.device("cuda:0")
+
+
+def default_args():
+    args = SimpleNamespace()
+    args.ckpt_dir = Path('ckpt')
+    args.ckpt_dir.mkdir(parents=True, exist_ok=True)
+    args.device = torch.device("cuda:0")
+    args.breeding_topk = 10
+    args.cand_lim = 64
+    args.num_child_sample = 128
+    args.mutation_rate = 0.1
+    args.num_trait_div = 4
+    args.num_attr_class = 4
+    return args
 
 def set_seeds(seed):
     random.seed(seed)
@@ -106,3 +119,46 @@ def inclusive_range(end, step):
 
 def batch_indexes(total, batch_size):
     return (list(range(i, min(i + batch_size, total))) for i in range(0, total, batch_size))
+
+
+def deep_to_cpu(obj):
+    if isinstance(obj, torch.Tensor):
+        return obj.cpu()
+    elif isinstance(obj, dict):
+        return {k: deep_to_cpu(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [deep_to_cpu(v) for v in obj]
+    else:
+        return obj
+
+def deep_to_pylist(obj):
+    if isinstance(obj, torch.Tensor):
+        # If it's a scalar tensor, use item()
+        if obj.numel() == 1:
+            return obj.item()
+        else:
+            return obj.cpu().tolist()
+    elif isinstance(obj, dict):
+        return {k: deep_to_pylist(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [deep_to_pylist(v) for v in obj]
+    else:
+        return obj
+    
+def deep_to_device(obj, device):
+    if isinstance(obj, torch.Tensor):
+        return obj.to(device)
+    elif isinstance(obj, dict):
+        return {k: deep_to_device(v, device) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [deep_to_device(v, device) for v in obj]
+    else:
+        return obj
+    
+def torch_cleansave(obj, path):
+    obj = deep_to_cpu(obj)
+    torch.save(obj, path)
+
+def torch_cleanload(path, device):
+    obj = torch.load(path)
+    return deep_to_device(obj, device)

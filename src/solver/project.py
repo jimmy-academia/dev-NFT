@@ -2,19 +2,19 @@ import random
 from utils import *
 
 class NFTProject:
-    def __init__(self, nft_project_data, setN, setM):
+    def __init__(self, nft_project_data, setN, setM, nft_project_name):
         self.N = setN 
         self.M = setM 
+        self.nft_project_name = nft_project_name
         self.trait_dict = nft_project_data['trait_system']
         self.item_attributes, self.user_preferences, self.user_budgets, self.item_counts = self.numericalize(nft_project_data)
-
-        self.trait_counts = self.compute_trait_stats() 
+        # self.trait_counts = self.compute_trait_stats() 
 
     def numericalize(self, nft_project_data):
         asset_traits, buyer_assets_ids, buyer_budgets, item_counts = nft_project_data['asset_traits'], nft_project_data['buyer_assets_ids'], nft_project_data['buyer_budgets'], nft_project_data['item_counts']
 
         max_aid_len = max([len(x) for x in buyer_assets_ids])
-        min_aid_len = 5 # filter buyers with at least 5 purchases
+        min_aid_len = min_purchase[nft_project_names.index(self.nft_project_name)] # filter buyers with min purchases
         user_preferences = []
         buyer_num = self.N if self.N is not None else len(buyer_assets_ids)
         aid_set = set()
@@ -47,13 +47,13 @@ class NFTProject:
             item_vec_list.append(item_vec)
         return item_vec_list
 
-    def compute_trait_stats(self):
-        trait_counts = []
-        for trait, options in self.trait_dict.items():
-            trait_counts.append([1 for __ in options])
-        for item_vec in self.item_attributes:
-            for t, choice in enumerate(item_vec):
-                trait_counts[t][choice] += 1
-        return trait_counts
+    # def compute_trait_stats(self):
+    #     trait_counts = []
+    #     for trait, options in self.trait_dict.items():
+    #         trait_counts.append([1 for __ in options])
+    #     for item_vec in self.item_attributes:
+    #         for t, choice in enumerate(item_vec):
+    #             trait_counts[t][choice] += 1
+    #     return trait_counts
 
     

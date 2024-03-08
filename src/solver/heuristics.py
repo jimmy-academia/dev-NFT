@@ -29,10 +29,7 @@ class RandomSolver(BaseSolver):
         budget_per_item = self.buyer_budgets / self.holdings.sum(1)
         buyer_spendings = self.holdings * budget_per_item.unsqueeze(1)
         self.pricing = buyer_spendings.sum(0)/self.nft_counts
-        # determine holding
         self.holdings = buyer_spendings/self.pricing * (1-1e-4)
-        # self.holdings = torch.where(self.holdings == 0, 0, self.holdings-1e-4)
-
         # assert all(self.holdings.sum(0) <= self.nft_counts) ## item constraint
         # assert all((self.holdings*self.pricing).sum(1) <= self.buyer_budgets) ## budget constraint
 
