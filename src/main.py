@@ -15,11 +15,9 @@ def main():
         '''Todos:
         1. data processing
         2. experiment + method
-        3. visualization
         ''' 
     )
     prepare_nft_data() # prepares nft data into files 
-
     # do different experiments
     run_experiments() # run all experiments for each baseline methods
     # ablation_tests()

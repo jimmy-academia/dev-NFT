@@ -16,13 +16,10 @@ import inspect
 
 NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat Ape Club', 'Heterosis', 'Roaring Leader', 'StepN']
 nft_project_names = [''.join(Project_Name.split()).lower() for Project_Name in NFT_Projects]
-min_purchase = [6, 1, 1, 1, 1, 1, 1]
+min_purchase = [6, 2, 2, 2, 1, 2, 1]
 
-Baseline_Methods = ['Random']
-# Baseline_Methods = ['Random', 'Favorite', 'Main']
-Breeding_Types = ['None', 'Homogeneous', 'ChildProject', 'Heterogeneous']
-
-
+Baseline_Methods = ['Random', 'Popular', 'Greedy', 'Auction', 'BANTER']
+Breeding_Types = ['Heterogeneous', 'Homogeneous', 'ChildProject', 'None']
 
 def default_args():
     args = SimpleNamespace()
@@ -30,21 +27,21 @@ def default_args():
     args.ckpt_dir.mkdir(parents=True, exist_ok=True)
     args.device = torch.device("cuda:0")
     args.breeding_topk = 10
-    args.cand_lim = 64
-    args.num_child_sample = 128
+    args.cand_lim = 50
+    args.num_child_sample = 100
     args.mutation_rate = 0.1
     args.num_trait_div = 4
     args.num_attr_class = 4
     return args
 
-def set_seeds(seed):
-    random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = True
+# def set_seeds(seed):
+#     random.seed(seed)
+#     os.environ['PYTHONHASHSEED'] = str(seed)
+#     np.random.seed(seed)
+#     torch.manual_seed(seed)
+#     torch.cuda.manual_seed(seed)
+#     torch.backends.cudnn.deterministic = True
+#     torch.backends.cudnn.benchmark = True
 
 class NamespaceEncoder(json.JSONEncoder):
   def default(self, obj):
@@ -74,6 +71,15 @@ def check():
     for key in caller_globals:
         if key not in globals():
             globals()[key] = caller_globals[key]
+
+    frame_info = inspect.getframeinfo(caller_frame)
+    caller_file = frame_info.filename
+    caller_line = frame_info.lineno
+
+    print('### check function called...')
+    print(f"Called from {caller_file}")
+    print(f"--------->> at line {caller_line}")
+
     code.interact(local=dict(globals(), **caller_locals))
 
 def ask_proceed(objectname='file'):
@@ -97,28 +103,16 @@ def mkdirpath(dirpath):
     path_dir.mkdir(parents=True, exist_ok=True)
     return path_dir
 
-
-def set_plotter():
-    import matplotlib.pyplot as plt
-    import matplotlib.font_manager as font_manager
-
-    plt.rcParams["font.family"] = "Times New Roman"
-    plt.rcParams["font.size"] = 50
-    plt.rcParams["font.weight"] = "bold"
-    plt.rcParams['xtick.labelsize'] = 40
-    plt.rcParams['ytick.labelsize'] = 40
-    
-    thecolors = ['#FFD92F', '#2CA02C', '#FF7F0E', '#1F77B4', '#D62728']
-    markers = ['X', '^', 'o', 'P', 'D']
-
-    return thecolors, markers
-
-
 def inclusive_range(end, step):
     return range(step, end+step, step)
 
-def batch_indexes(total, batch_size):
-    return (list(range(i, min(i + batch_size, total))) for i in range(0, total, batch_size))
+def make_batch_indexes(total, batch_size):
+    if hasattr(total, '__iter__') and hasattr(total, '__getitem__'):
+        return (total[i:i+batch_size] for i in range(0, len(total), batch_size))
+    elif isinstance(total, int):
+        return (list(range(i, min(i + batch_size, total))) for i in range(0, total, batch_size))
+    else:
+        raise ValueError('total must be an iterable or an integer')
 
 
 def deep_to_cpu(obj):

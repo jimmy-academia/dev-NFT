@@ -7,8 +7,7 @@ class NFTProject:
         self.M = setM 
         self.nft_project_name = nft_project_name
         self.trait_dict = nft_project_data['trait_system']
-        self.item_attributes, self.user_preferences, self.user_budgets, self.item_counts = self.numericalize(nft_project_data)
-        # self.trait_counts = self.compute_trait_stats() 
+        self.numericalize(nft_project_data)
 
     def numericalize(self, nft_project_data):
         asset_traits, buyer_assets_ids, buyer_budgets, item_counts = nft_project_data['asset_traits'], nft_project_data['buyer_assets_ids'], nft_project_data['buyer_budgets'], nft_project_data['item_counts']
@@ -19,8 +18,10 @@ class NFTProject:
         buyer_num = self.N if self.N is not None else len(buyer_assets_ids)
         aid_set = set()
         bid_list = []
+        num_trades = 0
         for i in range(buyer_num):
-            if len(buyer_assets_ids[i]) <= min_aid_len:
+            num_trades += len(buyer_assets_ids[i])
+            if len(buyer_assets_ids[i]) < min_aid_len:
                 continue
             aid_set |= set(buyer_assets_ids[i])
             user_prefs = self.trait2label_vec([asset_traits[aid] for aid in buyer_assets_ids[i]])
@@ -32,7 +33,11 @@ class NFTProject:
 
         self.N = len(bid_list)
         self.M = len(aid_set) #filter items purchased by buyers
-        return self.trait2label_vec([asset_traits[i] for i in aid_set]), user_preferences, [buyer_budgets[bi] for bi in bid_list], [item_counts[i]+1 for i in aid_set]
+        self.item_attributes = self.trait2label_vec([asset_traits[i] for i in aid_set])
+        self.user_preferences = user_preferences
+        self.user_budgets = [buyer_budgets[bi] for bi in bid_list]
+        self.item_counts = [item_counts[i]+1 for i in aid_set]
+        self.num_trades = num_trades
 
     def trait2label_vec(self, asset_traits):
         item_vec_list = []

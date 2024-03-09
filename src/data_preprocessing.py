@@ -38,7 +38,7 @@ def load_nft_project(project_name, tiny_dir, data_files):
     '''
     trade_info, NFT_info, trait_system = map(loadj, data_files)
     NFT_info, trait_system = filter_nft_attributes(project_name, NFT_info, trait_system)
-    nft_project_data = process_nft_trades(trade_info['result'], NFT_info, trait_system)
+    nft_project_data = process_nft_trades(trade_info['result'], NFT_info, trait_system, project_name=='stepn')
     return nft_project_data
 
 def filter_nft_attributes(project_name: str, NFT_info: list, trait_system: dict) -> tuple:
@@ -53,20 +53,21 @@ def filter_nft_attributes(project_name: str, NFT_info: list, trait_system: dict)
     Returns:
     - Tuple of updated NFT_info and trait_system.
     """
-    if project_name in ['Axies', 'StepN']:
-        trigger = 'None' if project_name == 'Axies' else 'none'
+    if project_name in ['axiesinfinity', 'stepn']:
+        trigger = 'None' if project_name == 'axiesinfinity' else 'none'
         NFT_info = [nft for nft in NFT_info if trigger not in nft['trait']]
 
-    if project_name in ['BoredApeYachtClub', 'RoaringLeader', 'CryptoKitties']:
-        for trait in trait_system.keys():
-            trait_system[trait].append('none')
-        if project_name in ['RoaringLeader', 'CryptoKitties']:
-            lastT = -4 if project_name == 'RoaringLeader' else -16
-            traits = list(trait_system.keys())[:lastT]
-            trait_system = {key: trait_system[key] for key in traits}
-            NFT_info = [{**nft, 'trait': nft['trait'][:lastT]} for nft in NFT_info]
-
-    if project_name == 'StepN':
+    if project_name in ['boredapeyachtclub', 'roaringleader', 'cryptokitties']:
+        trait_system = {trait: trait_system[trait] + ['none'] for trait in trait_system}
+    if project_name in ['roaringleader', 'cryptokitties']:
+        if project_name == 'cryptokitties':
+            trait_select_indices = [0,1,3,4,5,6,7]
+        else:
+            trait_select_indices = list(range(11))
+        traits = [list(trait_system.keys())[i] for i in trait_select_indices]
+        trait_system = {key: trait_system[key] for key in traits}
+        NFT_info = [{**nft, 'trait': [nft['trait'][i] for i in trait_select_indices]} for nft in NFT_info]
+    if project_name == 'stepn':
         NFT_info, trait_system = Augment_StepN(NFT_info, trait_system)
     return NFT_info, trait_system
 
@@ -81,12 +82,13 @@ def Augment_StepN(asset_traits, trait_system):
     attr2_list = random.choices(range(len(socket2)), weights=socket2, k=M)
     new_asset_traits = []
     for asset, attr1, attr2 in zip(asset_traits, attr1_list, attr2_list):
-        new_asset_traits.append(asset+[names[attr1], names[attr2]])
-    
+        asset['trait'].append(names[attr1])
+        asset['trait'].append(names[attr2])
+        new_asset_traits.append(asset)
     return new_asset_traits, trait_system
 
 def fetchinfo(transaction):
-    return transaction['buyer_address'], transaction['price'], transaction['token_ids'][0]
+    return transaction['buyer_address'], int(transaction['price']), int(transaction['token_ids'][0])
 
 def process_nft_trades(trade_info, NFT_info, trait_system, random_match=False):
     '''
@@ -97,15 +99,13 @@ def process_nft_trades(trade_info, NFT_info, trait_system, random_match=False):
     # Initialize dictionaries for buyers and assets
     buyer_info = defaultdict(lambda: {'budget': 0, 'asset_ids': []})
     asset_info = {'asset_traits':[], 'item_counts':[], 'atuples':[]}
-    # asset_info = defaultdict(lambda: {'count': 0, 'id': []})
-    new_asset_traits = []
 
     token_id2asset = {x['tokenId']:x for x in NFT_info}
     # Process each transaction
     for transaction in tqdm(trade_info, desc='Processing transactions', ncols=88):
         buyer_add, price, token_id = fetchinfo(transaction)
         if random_match:
-            token_id = random.choice(token_id2asset.keys())
+            token_id = random.choice(list(token_id2asset.keys()))
         if token_id in token_id2asset:
             asset_trait = token_id2asset[token_id]['trait']
             atuple = tuple(asset_trait)

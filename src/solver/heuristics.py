@@ -1,25 +1,24 @@
 import torch
 from .base import BaseSolver
 
-from utils import *
-
-class RandomSolver(BaseSolver):
+class HeuristicsSolver(BaseSolver):
     def __init__(self, args):
         super().__init__(args)
-        print('inialized random solver')
+        self.k = 10 if self.nftP.N * 10 > self.nftP.M else self.nftP.M//self.nftP.N +1 
+
+    def initial_assignment(self):
+        raise NotImplementedError
     
     def solve(self):
-        # random recommendation of NFT to buyers
+        # random or popular recommendation of NFT to buyers
+        _assignments = self.initial_assignment()
+
         self.holdings = torch.zeros(self.nftP.N, self.nftP.M).to(self.args.device)
-
-        k = 10 if self.nftP.N * 10 > self.nftP.M else self.nftP.M//self.nftP.N +1 
-
-        random_assignments = torch.stack([torch.randperm(self.nftP.M)[:k] for _ in range(self.nftP.N)])
-        self.holdings[torch.arange(self.nftP.N)[:, None], random_assignments] = 1
-
-        all_values = torch.arange(self.nftP.M)
-        flat_assignments = random_assignments.flatten()
-        zero_tensor = torch.zeros(self.nftP.M, dtype=torch.bool)
+        self.holdings[torch.arange(self.nftP.N)[:, None], _assignments] = 1
+        
+        all_values = torch.arange(self.nftP.M).to(self.args.device)
+        flat_assignments = _assignments.flatten()
+        zero_tensor = torch.zeros(self.nftP.M, dtype=torch.bool, device=self.args.device)
         zero_tensor.index_fill_(0, flat_assignments, True)
         unassigned = all_values[~zero_tensor]
 
@@ -33,9 +32,18 @@ class RandomSolver(BaseSolver):
         # assert all(self.holdings.sum(0) <= self.nft_counts) ## item constraint
         # assert all((self.holdings*self.pricing).sum(1) <= self.buyer_budgets) ## budget constraint
 
-class FavoriteSolver(BaseSolver):
+class RandomSolver(HeuristicsSolver):
     def __init__(self, args):
         super().__init__(args)
     
-    def solve(self):
-        print('todo')
+    def initial_assignment(self):
+        random_assignments = torch.stack([torch.randperm(self.nftP.M)[:self.k] for _ in range(self.nftP.N)]).to(self.args.device)
+        return random_assignments
+
+class PopularSolver(HeuristicsSolver):
+    def __init__(self, args):
+        super().__init__(args)
+
+    def initial_assignment(self):
+        favorite_assignments = (self.Uij * self.Vj).topk(self.k)[1]  #shape N, k
+        return favorite_assignments
