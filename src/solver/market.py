@@ -32,6 +32,5 @@ class BANTERSolver(BaseSolver):
             self.pricing = torch.where(self.pricing < 1e-10, 1e-10, self.pricing) 
             pbar.set_postfix(excess=float(excess.sum()))
         
-        self.pricing = pricing
         self.holdings = self.solve_user_demand()
 
