@@ -241,17 +241,17 @@ class BaseSolver:
                 self.holdings[batch_users],
                 self.buyer_budgets[batch_users],
                 self.pricing,   
+                True,
             ))
         self.buyer_utilities = torch.cat(self.buyer_utilities, dim=0)
-
         # seller revenue
         self.seller_revenue = (self.pricing * self.holdings).sum()
 
-    def calculate_buyer_utilities(self, user_index, holdings, budgets, pricing):
+    def calculate_buyer_utilities(self, user_index, holdings, budgets, pricing, split=False):
         '''
         U^i = U^i_{Item} + U^i_{Collection} + U^i{Breeding}
         U^i_{Item} = sum_j V_j * holdings_j
-        U^i_{Collection} = sum_r  a^i_r log (sum_j multistep(x^i[j], Q[j]) t_jr)
+        U^i_{Collection} = sum_r  a^i_r log (sum_j holdings_j * nft_j^r)
         U^i_{Breeding} = sum_k topk expectation value * multistep(x^i[p], Q[p]) * multistep(x^i[q], Q[q])
         R = budgets - sum_j price_j * holdings_j
         '''
@@ -262,14 +262,17 @@ class BaseSolver:
         for sub_batch in make_batch_indexes(len(holdings), chunk_size):
             subtotals.append((holdings[sub_batch].unsqueeze(2) * self.nft_attributes).sum(1))
         subtotals = torch.cat(subtotals, dim=0) + 1
-        U_coll = (torch.log(subtotals) * self.buyer_preferences[user_index]).sum(1)
+        U_coll = (torch.log(subtotals) * self.buyer_preferences[user_index]).sum(1) * 100
 
         R = budgets - (holdings * pricing).sum(1)
         if self.breeding_type == 'None':
             return U_item + U_coll + R
         
-        U_breeding = self.breeding_utility(holdings, user_index)
-        return U_item + U_coll + U_breeding + R
+        U_breeding = self.breeding_utility(holdings, user_index) * 1000
+        if not split:
+            return U_item + U_coll + U_breeding + R
+        else:
+            return torch.stack([U_item, U_coll, U_breeding, R]).T
     
     def breeding_utility(self, holdings, user_index):
         # calculate probability * expectation up to topk
@@ -279,7 +282,7 @@ class BaseSolver:
         expectation = self.ranked_parent_expectations[user_index]
 
         cum_prob = torch.cumsum(probability, dim=1)
-        selection_mask = torch.where(cum_prob > self.args.breeding_topk, probability, torch.zeros_like(probability))
+        selection_mask = torch.where(cum_prob < self.args.breeding_topk, probability, torch.zeros_like(probability))
 
         if self.breeding_type == 'homogeneous':
             # calculate frequencies based on selection_mask 
@@ -289,7 +292,7 @@ class BaseSolver:
             expectation = expectation / (1+ child_population_factor/10)
             print('todo examine!!')
 
-        U_breeding = (selection_mask * expectation).sum(1)
+        U_breeding = (selection_mask * expectation).sum(1)  # increase breeding importance
         return U_breeding
                 
     def solve_user_demand(self, set_user_index=None):

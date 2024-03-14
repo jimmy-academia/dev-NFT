@@ -8,15 +8,12 @@ plt.rcParams["font.weight"] = "bold"
 plt.rcParams['xtick.labelsize'] = 40
 plt.rcParams['ytick.labelsize'] = 40
 
-thecolors = ['#FFD92F', '#2CA02C', '#FF7F0E', '#1F77B4', '#D62728']
+thecolors = ['#FFD92F', '#2CA02C', '#FF7F0E', '#1F77B4', '#008080', '#ADD8E6', '#D62728']
 markers = ['X', '^', 'o', 'P', 'D']
-
-output_dir = Path('out')
-output_dir.mkdir(parents=True, exist_ok=True)
+patterns = ['x', 'o', '']
 
 
-def bar_plot(revenues, infos, out_sub_dir, filename):
-    (output_dir/out_sub_dir).mkdir(parents=True, exist_ok=True)
+def bar_plot(revenues, infos, filepath):
     plt.rcParams['ytick.labelsize'] = 40
     plt.figure(figsize=(8, 6), dpi=200)
     plt.ylabel(infos['ylabel'])
@@ -25,17 +22,42 @@ def bar_plot(revenues, infos, out_sub_dir, filename):
         plt.bar(x, revenue, color=color)
     plt.xticks([])
     plt.tight_layout()
-    plt.savefig(output_dir/out_sub_dir/filename, bbox_inches='tight') # bbox_inches='tight'??
+    plt.savefig(filepath, bbox_inches='tight') # bbox_inches='tight'??
     plt.close()
 
+def tripple_bar_plot(project_revenues, infos, filepath):
+    plt.rcParams['ytick.labelsize'] = 40
+    plt.figure(figsize=(8, 6), dpi=200)
+    plt.ylabel(infos['ylabel'])
+    plt.ylim(0, infos['y_axis_lim'])
     
-def make_legend(legends, out_sub_dir, bar=True, markers=None):
+    bar_width = 0.25
+
+    indexes = range(len(project_revenues))
+    # from utils import check
+    # check()
+    for index, rev_tripple, color in zip(indexes, project_revenues, thecolors):
+        for k, (rev, pat) in enumerate(zip(rev_tripple, patterns)):
+            plt.bar(index+k*bar_width, rev, bar_width, color=color, hatch=pat)
+    plt.xticks([])
+    plt.tight_layout()
+    plt.savefig(filepath, bbox_inches='tight') # bbox_inches='tight'??
+    plt.close()
+
+
+def make_legend(legends, filepath, tag, markers=None):
+
+    # tag = 'bar', 'tripple', 'line'
     fig, ax = plt.subplots()
-    for i in range(len(legends)):
-        if bar:
-            ax.bar(0, 0, color=colors[i], label=legends[i])
-        else:
-            ax.plot(0, 0, color=colors[i], label=legends[i], marker=markers[i], markersize=30, linewidth=12)
+    if tag == 'bar':
+        [ax.bar(0, 0, color=thecolors[i], label=legends[i]) for i in range(len(legends))]
+    elif tag == 'line':
+        [ax.plot(0, 0, color=thecolors[i], label=legends[i], marker=markers[i], markersize=30, linewidth=12)  for i in range(len(legends))]
+    elif tag == 'tripple':
+        [ax.bar(0,0, color=thecolors[i], label=legends[i]) for i in range(len(legends) - 3)]
+        [ax.bar(0,0, color='white', edgecolor='black', hatch=patterns[i], label=legends[i-3]) for i in range(3)]
+    else:
+        raise Exception(f'{tag} not found')
 
     # Extract the handles and labels from the plot
     handles, labels = ax.get_legend_handles_labels()
@@ -46,5 +68,5 @@ def make_legend(legends, out_sub_dir, bar=True, markers=None):
     ax_legend = fig_legend.add_subplot(111)
     ax_legend.axis('off')
     ax_legend.legend(handles, labels, loc='center', ncol=len(legends), frameon=False, fontsize=50)
-    fig_legend.savefig(output_dir/out_sub_dir/'legend.jpg', bbox_inches='tight')
+    fig_legend.savefig(filepath, bbox_inches='tight')
     plt.close(fig_legend)

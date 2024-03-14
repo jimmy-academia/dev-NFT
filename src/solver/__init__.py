@@ -1,5 +1,7 @@
 from .heuristics import RandomSolver, PopularSolver
 from .optimization import GreedySolver, AuctionSolver
+from .group import GroupSolver
+from .recsys import HetRecSysSolver
 from .market import BANTERSolver
 
 def get_solver(args, _method):
@@ -11,5 +13,9 @@ def get_solver(args, _method):
         return GreedySolver(args)
     if _method == 'Auction':
         return AuctionSolver(args)
+    if _method == 'Group':
+        return GroupSolver(args)
+    if _method == 'HetRecSys':
+        return HetRecSysSolver(args)
     if _method == 'BANTER':
         return BANTERSolver(args)

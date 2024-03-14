@@ -18,15 +18,18 @@ NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat
 nft_project_names = [''.join(Project_Name.split()).lower() for Project_Name in NFT_Projects]
 min_purchase = [6, 2, 2, 2, 1, 2, 1]
 
-Baseline_Methods = ['Random', 'Popular', 'Greedy', 'Auction', 'BANTER']
-Breeding_Types = ['Heterogeneous', 'Homogeneous', 'ChildProject', 'None']
+Baseline_Methods = ['Random', 'Popular', 'Greedy', 'Auction', 'Group', 'HetRecSys', 'BANTER']
+Breeding_Types = ['Heterogeneous', 'Homogeneous', 'ChildProject'] #'None'
+
+output_dir = Path('out')
+output_dir.mkdir(parents=True, exist_ok=True)
 
 def default_args():
     args = SimpleNamespace()
     args.ckpt_dir = Path('ckpt')
     args.ckpt_dir.mkdir(parents=True, exist_ok=True)
     args.device = torch.device("cuda:0")
-    args.breeding_topk = 10
+    args.breeding_topk = 50
     args.cand_lim = 50
     args.num_child_sample = 100
     args.mutation_rate = 0.1
@@ -156,3 +159,11 @@ def torch_cleansave(obj, path):
 def torch_cleanload(path, device):
     obj = torch.load(path)
     return deep_to_device(obj, device)
+
+def check_file_exists(filepath, tag=''):
+    if filepath.exists():
+        print(f'{tag} exists for {filepath}, skipping...')
+        return True
+    else:
+        print(f'creating {tag} to {filepath}')
+        return False
