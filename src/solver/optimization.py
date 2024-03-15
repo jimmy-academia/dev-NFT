@@ -21,12 +21,11 @@ class GreedySolver(OptimizationSolver):
 
     def optimize_pricing(self):
         ## greedy recommend NFT with highest value/price ratio
-        self.pricing = torch.ones(self.nftP.M, device=self.args.device)
+        self.pricing = torch.ones(self.nftP.M, device=self.args.device)*1e-3
         for __ in range(16):
             spending = self.Uij/self.pricing 
             spending = spending/spending.sum(1).unsqueeze(1)
             self.pricing = (spending * self.buyer_budgets.unsqueeze(1)).sum(0) / self.nft_counts
-        
 
 class AuctionSolver(OptimizationSolver):
     def __init__(self, args):
