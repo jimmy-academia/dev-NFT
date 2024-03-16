@@ -4,9 +4,6 @@ from pathlib import Path
 from .central_plotter import make_legend, tripple_bar_plot
 from utils import *
 
-
-
-
 def plot_total_revenue():
     out_sub_dir = 'total_revenue/' 
     (output_dir/out_sub_dir).mkdir(parents=True, exist_ok=True)
@@ -42,6 +39,38 @@ def plot_total_revenue():
     if check_file_exists(filepath, 'revenue legends'):
         return
     make_legend(Baseline_Methods + Breeding_Types, filepath, 'tripple')
+
+
+def plot_buyer_utilities():
+    out_sub_dir = 'buyer_utils/' 
+    (output_dir/out_sub_dir).mkdir(parents=True, exist_ok=True)
+
+    for project_name in nft_project_names:
+        filename = f'{project_name}.jpg'
+        filepath = output_dir/out_sub_dir/filename
+        if check_file_exists(filepath, 'utility plot'):
+            continue
+
+        project_butils = []
+        for _method in Baseline_Methods:
+            butilities = []
+            for _breeding in Breeding_Types:
+                filepth = Path(f'ckpt/main_exp/{project_name}_{_method}_{_breeding}.pth')
+                if filepth.exists():
+                    butilities.append(torch.load(filepth)['buyer_utilities'].sum(1).mean().item())  ## average buyer utility
+                else:
+                    butilities.append(0)
+            project_butils.append(butilities)
+
+        # set plot height
+        y_axis_lim = max([max(butilities) for butilities in project_butils])
+        y_axis_lim = y_axis_lim + 0.1 * y_axis_lim
+
+        infos = {
+            'ylabel': 'Avg. Utility',
+            'y_axis_lim': y_axis_lim
+        }
+        tripple_bar_plot(project_butils, infos, filepath)
 
 def quick_check():
     ## quick check

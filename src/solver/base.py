@@ -218,8 +218,7 @@ class BaseSolver:
         return ranked_parent_nfts, ranked_parent_expectations
 
     def solve(self):
-        '''
-        yields:
+        '''yields:
         self.pricing
         self.holdings (recommendation of purchase amount to each buyer)
         '''

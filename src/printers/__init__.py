@@ -1,2 +1,2 @@
 from .stats import print_nft_data_stats
-from .total_revenues import plot_total_revenue
+from .main_exp_barplots import plot_total_revenue, plot_buyer_utilities

@@ -9,7 +9,6 @@ from types import SimpleNamespace
 from pathlib import Path
 
 import torch
-from torch.nn.functional import tanh
 
 import code 
 import inspect
@@ -161,10 +160,10 @@ def torch_cleanload(path, device):
     obj = torch.load(path)
     return deep_to_device(obj, device)
 
-def check_file_exists(filepath, tag=''):
+def check_file_exists(filepath, item_name=''):
     if filepath.exists():
-        print(f'{tag} exists for {filepath}, skipping...')
+        print(f'{item_name} exists for {filepath}, skipping...')
         return True
     else:
-        print(f'creating {tag} to {filepath}')
+        print(f'creating {item_name} to {filepath}')
         return False

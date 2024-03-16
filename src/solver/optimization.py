@@ -8,12 +8,20 @@ class OptimizationSolver(BaseSolver):
 
     def optimize_pricing(self):
         raise NotImplementedError
+    
+    def optimize_spending(self):
+        raise NotImplementedError
 
-    def solve(self):
-        self.optimize_pricing()
-        spending = self.Uij/self.pricing
-        spending = spending/spending.sum(1).unsqueeze(1) * self.buyer_budgets.unsqueeze(1)
-        self.holdings = spending/spending.sum(0) * self.nft_counts
+    def solve(self, set_pricing=None):
+        if set_pricing is None:
+            self.optimize_pricing()
+            spending = self.Uij/self.pricing
+            spending = spending/spending.sum(1).unsqueeze(1) * self.buyer_budgets.unsqueeze(1)
+            self.holdings = spending/spending.sum(0) * self.nft_counts
+        else:
+            self.pricing = set_pricing
+            self.optimize_spending()
+
 
 class GreedySolver(OptimizationSolver):
     def __init__(self, args):
@@ -26,6 +34,13 @@ class GreedySolver(OptimizationSolver):
             spending = self.Uij/self.pricing 
             spending = spending/spending.sum(1).unsqueeze(1)
             self.pricing = (spending * self.buyer_budgets.unsqueeze(1)).sum(0) / self.nft_counts
+    
+    def optimize_spending(self):
+        spending = self.Uij/self.pricing 
+        spending = spending/spending.sum(1).unsqueeze(1) * self.buyer_budgets.unsqueeze(1)
+        self.holdings = spending/self.pricing
+        fulfillment = self.holdings.sum(0) /self.nft_counts
+        self.holdings = self.holdings * fulfillment
 
 class AuctionSolver(OptimizationSolver):
     def __init__(self, args):
@@ -71,4 +86,24 @@ class AuctionSolver(OptimizationSolver):
             if all(remain_budgets < min(pricing)): break
         self.pricing = pricing
 
+    def optimize_spending(self):
+        remain_budgets = self.buyer_budgets.clone()
 
+        x = torch.zeros(self.nftP.N, self.nftP.M).to(self.args.device)
+        a = self.nft_counts.clone()
+        for __ in range(50):
+            random_id_list = random.sample(range(self.nftP.N), self.nftP.N)
+            for i in random_id_list:
+                budget = remain_budgets[i]
+                if budget > 0:
+                    j = torch.argmax(self.Uij[i]/self.pricing)
+                    if self.Uij[i][j] <= self.pricing[j]:
+                        break
+                    if a[j] != 0:
+                        amount = min(a[j], budget/self.pricing[j])
+                        a[j] -= amount
+                        x[i][j] += amount
+                        remain_budgets[i] -= amount*self.pricing[j]
+            if all(remain_budgets < min(self.pricing)): break
+        
+        self.holdings = x

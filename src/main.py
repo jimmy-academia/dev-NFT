@@ -19,7 +19,8 @@ def main():
     )
     prepare_nft_data() # prepares nft data into files 
     # do different experiments
-    run_revenue_experiments() # run all experiments for each baseline methods
+    run_revenue_experiments() 
+    run_buyer_utility()
     # ablation_tests()
     # runtime_tests()
     # case_study()

@@ -9,7 +9,7 @@ class HeuristicsSolver(BaseSolver):
     def initial_assignment(self):
         raise NotImplementedError
     
-    def solve(self):
+    def solve(self, set_pricing=None):
         # random or popular recommendation of NFT to buyers
         _assignments = self.initial_assignment()
 
@@ -25,10 +25,16 @@ class HeuristicsSolver(BaseSolver):
         unassigned_indices = torch.randint(high=self.nftP.N, size=(len(unassigned),))
         self.holdings[unassigned_indices, unassigned] = 1
 
-        budget_per_item = self.buyer_budgets / self.holdings.sum(1)
-        buyer_spendings = self.holdings * budget_per_item.unsqueeze(1)
-        self.pricing = buyer_spendings.sum(0)/self.nft_counts
-        self.holdings = buyer_spendings/self.pricing * (1-1e-4)
+        if set_pricing is None:
+            budget_per_item = self.buyer_budgets / self.holdings.sum(1)
+            buyer_spendings = self.holdings * budget_per_item.unsqueeze(1)
+            self.pricing = buyer_spendings.sum(0)/self.nft_counts
+            self.holdings = buyer_spendings/self.pricing * (1-1e-4)
+        else:
+            self.pricing = set_pricing
+            fullfil_ratio = self.buyer_budgets / (self.holdings * self.pricing).sum(1)
+            fullfil_ratio.clamp_(0, 1)
+            self.holdings = self.holdings * fullfil_ratio.unsqueeze(1)
         # assert all(self.holdings.sum(0) <= self.nft_counts) ## item constraint
         # assert all((self.holdings*self.pricing).sum(1) <= self.buyer_budgets) ## budget constraint
 
