@@ -1,5 +1,7 @@
 **/ckpt
 **/NFT_data
+**/out
+
 # Visual Studio Code
 .vscode/
 *.code-workspace
