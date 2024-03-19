@@ -22,13 +22,14 @@ class HeuristicsSolver(BaseSolver):
         zero_tensor.index_fill_(0, flat_assignments, True)
         unassigned = all_values[~zero_tensor]
 
-        unassigned_indices = torch.randint(high=self.nftP.N, size=(len(unassigned),))
-        self.holdings[unassigned_indices, unassigned] = 1
+        # unassigned_indices = torch.randint(high=self.nftP.N, size=(len(unassigned),))
+        # self.holdings[unassigned_indices, unassigned] = 1
 
         if set_pricing is None:
             budget_per_item = self.buyer_budgets / self.holdings.sum(1)
             buyer_spendings = self.holdings * budget_per_item.unsqueeze(1)
             self.pricing = buyer_spendings.sum(0)/self.nft_counts
+            self.pricing[unassigned] = self.pricing.max()
             self.holdings = buyer_spendings/self.pricing * (1-1e-4)
         else:
             self.pricing = set_pricing

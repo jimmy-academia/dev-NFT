@@ -1,6 +1,7 @@
 import random
 import torch
 from .base import BaseSolver
+from tqdm import tqdm
 
 class OptimizationSolver(BaseSolver):
     def __init__(self, args):
@@ -29,9 +30,16 @@ class GreedySolver(OptimizationSolver):
 
     def optimize_pricing(self):
         ## greedy recommend NFT with highest value/price ratio
-        self.pricing = torch.ones(self.nftP.M, device=self.args.device)*1e-3
+        self.pricing = torch.rand(self.nftP.M, device=self.args.device)
         for __ in range(16):
-            spending = self.Uij/self.pricing 
+            spending = (self.Uij/self.pricing)
+            # num_sel = self.nftP.M//10
+            # un_sel = spending.topk(num_sel, largest=False)[1]
+            # batch_size = 128
+
+            # mask = torch.ones_like(spending)
+            # mask.scatter_(1, spending.topk(self.nftP.M//10, largest=False)[1], 0)
+            # spending.mul_(mask)
             spending = spending/spending.sum(1).unsqueeze(1)
             self.pricing = (spending * self.buyer_budgets.unsqueeze(1)).sum(0) / self.nft_counts
     
@@ -47,28 +55,27 @@ class AuctionSolver(OptimizationSolver):
         super().__init__(args)
     
     def optimize_pricing(self):
-        pricing = torch.ones(self.nftP.M, device=self.args.device)
+        pricing = torch.rand(self.nftP.M, device=self.args.device)
         remain_budgets = self.buyer_budgets.clone()
 
         x,h,l = map(lambda __: torch.zeros(self.nftP.N, self.nftP.M).to(self.args.device), range(3))
-        a = self.nft_counts.clone()
-        eps = sum(remain_budgets)/self.nftP.M/(13 + random.random()*4)
-        for __ in range(50):
+        a = self.nft_counts.clone().float()
+        eps = sum(remain_budgets)/self.nftP.N/self.nftP.M
+        pbar = tqdm(range(128), ncols=88, desc='auction process')
+        for __ in pbar:
             random_id_list = random.sample(range(self.nftP.N), self.nftP.N)
-            for i in random_id_list:
+            for i in tqdm(random_id_list, leave=False, ncols=88):
                 budget = remain_budgets[i]
                 if budget > 0:
                     j = torch.argmax(self.Uij[i]/pricing)
-                    if self.Uij[i][j] <= pricing[j]:
-                        break
                     if a[j] != 0:
                         amount = min(a[j], budget/pricing[j])
                         a[j] -= amount
                         x[i][j] += amount
-                        h[i][j] += amount
+                        l[i][j] += amount
                         remain_budgets[i] -= amount*pricing[j]
                     elif l.sum(0)[j] > 0:
-                        candidate = [i for i in range(args.N) if (l[:, j]>0)[i]]
+                        candidate = [i for i in range(self.nftP.N) if (l[:, j]>0)[i]]
                         c = random.choice(candidate)
                         amount = min(l[c][j], budget/pricing[j])
                         l[c][j] -= amount
@@ -78,10 +85,10 @@ class AuctionSolver(OptimizationSolver):
                         x[i][j] += amount
                         remain_budgets[i] -= amount*pricing[j]*(1+eps)
                     else:
-                        h[:, j] = l[:, j]
-                        remain_budgets -= h[:, j]*eps
-                        l[:, j] = 0
+                        l[:, j] = h[:, j]
+                        h[:, j] = 0
                         pricing[j] *= (1+eps)
+                        pbar.set_postfix(val=pricing[j].item())
 
             if all(remain_budgets < min(pricing)): break
         self.pricing = pricing

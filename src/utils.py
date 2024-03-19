@@ -18,8 +18,15 @@ NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat
 nft_project_names = [''.join(Project_Name.split()).lower() for Project_Name in NFT_Projects]
 min_purchase = [6, 2, 2, 2, 1, 2, 1]
 
-Baseline_Methods = ['Random', 'Popular', 'Greedy', 'Auction', 'Group', 'HetRecSys', 'BANTER']
+Baseline_Methods = ['Random', 'Popular', 'Auction', 'Group',  'HetRecSys', 'BANTER']
+# Baseline_Methods = ['Random', 'Popular', 'Greedy', 'Auction', 'Group', 'HetRecSys', 'BANTER']
 Breeding_Types = ['Heterogeneous', 'Homogeneous', 'ChildProject'] #'None'
+
+thecolors = ['#FFD92F', '#2CA02C', '#FF7F0E', '#1F77B4', '#008080', '#D62728']
+# thecolors = ['#FFD92F', '#2CA02C', '#FF7F0E', '#1F77B4', '#008080', '#ADD8E6', '#D62728']
+themarkers = ['X', '^', 'o', 'P', 'D']
+thepatterns = ['*', '+', '|']
+
 
 output_dir = Path('out')
 output_dir.mkdir(parents=True, exist_ok=True)
@@ -35,6 +42,8 @@ def default_args():
     args.mutation_rate = 0.1
     args.num_trait_div = 4
     args.num_attr_class = 4
+    args.decay = 0.9
+    args.ablation_id = 0
     return args
 
 # def set_seeds(seed):

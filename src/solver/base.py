@@ -225,10 +225,12 @@ class BaseSolver:
         raise NotImplementedError
 
     def evaluate(self):
+
         epsilon = 1e-6
         self.pricing.clamp_(min=0)
-
         self.holdings = self.solve_user_demand()
+        # pricing_demand = self.solve_user_demand()
+        # self.holdings = torch.where(self.holdings > pricing_demand, pricing_demand, self.holdings)
         self.holdings.clamp_(min=0)
         self.holdings *= torch.clamp(self.nft_counts / (self.holdings.sum(0)+epsilon), max=1) ## fit item constraints
         self.holdings *= torch.clamp(self.buyer_budgets / ((self.holdings * self.pricing).sum(1)+epsilon), max=1).view(-1, 1) ## fit budget constraints
@@ -288,7 +290,7 @@ class BaseSolver:
             parent_attr_freq = torch.stack([self.nft_attributes[parents[..., p]]*selection_mask for p in range(parents.shape[-1])]).sum(0)
             # adjust expectation
             child_population_factor = (torch.stack([self.nft_attributes[parents[..., p]] for p in range(parents.shape[-1])]) * parent_attr_freq).sum(0)
-            expectation = expectation / (1+ child_population_factor/10)
+            expectation = expectation / child_population_factor
             print('todo examine!!')
 
         U_breeding = (selection_mask * expectation).sum(1)  # increase breeding importance
@@ -305,7 +307,7 @@ class BaseSolver:
         spending = torch.rand(self.nftP.N, self.nftP.M+1).to(self.args.device) # N x M+1 additional column for remaining budget
         spending /= spending.sum(1).unsqueeze(1)
 
-        pbar = tqdm(range(128), ncols=88, desc='Solving user demand!', leave=False)
+        pbar = tqdm(range(16), ncols=88, desc='Solving user demand!', leave=False)
         
         user_eps = 1e-4
         for __ in pbar:

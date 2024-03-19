@@ -24,7 +24,7 @@ class GroupSolver(HeuristicsSolver):
         _assignment = torch.ones((self.nftP.N, _len), device=self.args.device).long()
 
         for batch_buyer_ids in tqdm(buyer_ids_list, leave=False, ncols=88, desc='iterate group equilibrium'):
-            ## recommend items to group
+            ## recommend items to group, each member has a vote on which item to choose
             selections = torch.randint(0, self.nftP.M, (_len, ), device=self.args.device)
 
             for __ in range(128):
@@ -33,8 +33,8 @@ class GroupSolver(HeuristicsSolver):
                     # follow Lucas et al. Users’ satisfaction in recommendation systems for groups: an approach based on noncooperative games. WWW 2013
                     mask = torch.ones_like(self.Uij[buyer_id], dtype=torch.bool)
                     mask[selections] = False
-                    p = torch.argmax(self.Uij[buyer_id].masked_select(mask))
-                    q = torch.argmin(self.Uij[buyer_id].masked_select(~mask))
+                    p = torch.argmax(self.Uij[buyer_id]* mask) # best choice not selected (out of M)
+                    q = torch.argmin(self.Uij[buyer_id].masked_select(~mask)) # worst selected (out of _len)
                     selections[q] = p
 
             _assignment[batch_buyer_ids] = selections

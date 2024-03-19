@@ -9,22 +9,19 @@ from experiments import *
 
 def main():
     """
-    Run all unfinished experiments
+    Run all (unfinished) experiments
     """
-    print(
-        '''Todos:
-        1. data processing
-        2. experiment + method
-        ''' 
-    )
     prepare_nft_data() # prepares nft data into files 
-    # do different experiments
-    run_revenue_experiments() 
-    run_buyer_utility()
-    # ablation_tests()
-    # runtime_tests()
-    # case_study()
-    # large_scale_dupliate()
+    
+    run_experiments() 
+    
+    # run_sensitivity_tests()
+    # measure_runtime()
+    
+    run_ablation_tests()
+    # adjust_pruning_tests()
+
+    # do_case_study()
 
 if __name__ == "__main__":
     main()
