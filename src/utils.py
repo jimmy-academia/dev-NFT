@@ -24,7 +24,7 @@ Breeding_Types = ['Heterogeneous', 'Homogeneous', 'ChildProject'] #'None'
 
 thecolors = ['#FFD92F', '#2CA02C', '#FF7F0E', '#1F77B4', '#008080', '#D62728']
 # thecolors = ['#FFD92F', '#2CA02C', '#FF7F0E', '#1F77B4', '#008080', '#ADD8E6', '#D62728']
-themarkers = ['X', '^', 'o', 'P', 'D']
+themarkers = ['X', '^', 'o', 'P', 's', '*']
 thepatterns = ['*', '+', '|']
 
 

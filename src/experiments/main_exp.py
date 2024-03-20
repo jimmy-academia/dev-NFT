@@ -44,7 +44,8 @@ def run_experiments():
                         'nft_counts': Solver.nft_counts,
                     }
                     torch.save(deep_to_cpu(Result), result_file)
-                    print(f'[{nft_project_name}, {_method}, {_breeding}] experiment done.')
+                    print(f'seller_revenue {Solver.seller_revenue.item()} buyer_utilities {Solver.buyer_utilities[:, :2].sum(1).mean().item()}')
+                    print('______________________________________experiment done.')
 
 # import shutil
 # def run_buyer_utility():

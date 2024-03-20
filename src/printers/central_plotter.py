@@ -10,8 +10,17 @@ plt.rcParams["font.weight"] = "bold"
 plt.rcParams['xtick.labelsize'] = 40
 plt.rcParams['ytick.labelsize'] = 40
 
+def line_plot(X, project_values, infos, filepath):
+    plt.figure(figsize=(12, 6), dpi=200)
+    plt.ylabel(infos['ylabel'])
+    plt.xlabel(infos['xlabel'])
+    for values, color, marker in zip(project_values, infos['colors'], infos['markers']):
+        plt.plot(X, values, color=color, marker=marker, markersize=10, linewidth=3.5)
+    plt.tight_layout()
+    plt.savefig(filepath)
+    plt.close()
+
 def bar_plot(values, infos, filepath):
-    plt.rcParams['ytick.labelsize'] = 40
     plt.figure(figsize=(8, 6), dpi=200)
     plt.ylabel(infos['ylabel'])
     plt.ylim(0, infos['y_axis_lim'])
@@ -23,21 +32,16 @@ def bar_plot(values, infos, filepath):
     plt.close()
 
 def tripple_bar_plot(project_revenues, infos, filepath):
-    plt.rcParams['ytick.labelsize'] = 40
     plt.figure(figsize=(12, 6), dpi=200)
     plt.ylabel(infos['ylabel'])
     plt.ylim(infos['y_axis_min'], infos['y_axis_lim'])
 
-    
     bar_width = 1
     set_width = 3.5
-
     indexes = range(len(project_revenues))
-    # from utils import check
-    # check()
     for index, rev_tripple, color in zip(indexes, project_revenues, infos['colors']):
         for k, (rev, pat) in enumerate(zip(rev_tripple, infos['patterns'])):
-            plt.bar(index*set_width+k*(bar_width+0.1), rev, bar_width, color=color, edgecolor='black', hatch=pat*2, log=infos['log'])
+            plt.bar(index*set_width+k*(bar_width+0.1), rev, bar_width, color=color, edgecolor='black', hatch=pat*2)
     plt.xticks([])
     plt.tight_layout()
     plt.savefig(filepath, bbox_inches='tight') # bbox_inches='tight'??

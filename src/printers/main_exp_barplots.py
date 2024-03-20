@@ -35,8 +35,8 @@ def plot_main_exp():
 
             # set plot height
             y_axis_lim = max([max(method_vals) for method_vals in project_values])
-            _increase = 2 if tag == 'runtime' else 0.1
-            y_axis_lim = y_axis_lim + _increase * y_axis_lim
+            # _increase =  if tag == 'runtime' else 0.1
+            y_axis_lim = y_axis_lim + 0.1 * y_axis_lim
 
             y_axis_min = min([min(method_vals) for method_vals in project_values]) if tag == 'runtime' else 0
             y_axis_min = y_axis_min - 0.1 * y_axis_min

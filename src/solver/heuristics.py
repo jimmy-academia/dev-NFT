@@ -4,7 +4,6 @@ from .base import BaseSolver
 class HeuristicsSolver(BaseSolver):
     def __init__(self, args):
         super().__init__(args)
-        self.k = 10 if self.nftP.N * 10 > self.nftP.M else self.nftP.M//self.nftP.N +1 
 
     def initial_assignment(self):
         raise NotImplementedError
@@ -29,7 +28,7 @@ class HeuristicsSolver(BaseSolver):
             budget_per_item = self.buyer_budgets / self.holdings.sum(1)
             buyer_spendings = self.holdings * budget_per_item.unsqueeze(1)
             self.pricing = buyer_spendings.sum(0)/self.nft_counts
-            self.pricing[unassigned] = self.pricing.max()
+            self.pricing[unassigned] = 1e-3
             self.holdings = buyer_spendings/self.pricing * (1-1e-4)
         else:
             self.pricing = set_pricing
@@ -42,15 +41,21 @@ class HeuristicsSolver(BaseSolver):
 class RandomSolver(HeuristicsSolver):
     def __init__(self, args):
         super().__init__(args)
-    
+        self.k = 1
     def initial_assignment(self):
         random_assignments = torch.stack([torch.randperm(self.nftP.M)[:self.k] for _ in range(self.nftP.N)]).to(self.args.device)
         return random_assignments
 
 class PopularSolver(HeuristicsSolver):
+# class PopularSolver(BaseSolver):
     def __init__(self, args):
         super().__init__(args)
+        self.k = 20
 
     def initial_assignment(self):
+        # spending = self.Uij
+        # spending = spending/spending.sum(1).unsqueeze(1)
+        # self.pricing = (spending * self.buyer_budgets.unsqueeze(1)).sum(0) / self.nft_counts
+
         favorite_assignments = (self.Uij * self.Vj).topk(self.k)[1]  #shape N, k
         return favorite_assignments

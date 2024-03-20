@@ -11,7 +11,7 @@ class BaseSolver:
         self.breeding_type = args.breeding_type
 
         # cache system: same setN, setM, nft_project_name yeilds same results.
-        cache_dir = args.ckpt_dir / f'cache_{args.nft_project_name}_N_{args.setN}_M_{args.setM}'
+        cache_dir = args.ckpt_dir/'cache'/f'{args.nft_project_name}_N_{args.setN}_M_{args.setM}'
         cache_dir.mkdir(parents=True, exist_ok=True)
         cache_nft_project_file = cache_dir / f'project.pth'
         if cache_nft_project_file.exists():
@@ -269,7 +269,9 @@ class BaseSolver:
         if self.breeding_type == 'None':
             return U_item + U_coll + R
         
-        U_breeding = self.breeding_utility(holdings, user_index) * 1000
+        U_breeding = self.breeding_utility(holdings, user_index) 
+        U_breeding = U_breeding * (sum(U_item).detach()/(sum(U_breeding).detach()+1e-5))
+
         if not split:
             return U_item + U_coll + U_breeding + R
         else:
@@ -279,21 +281,21 @@ class BaseSolver:
         # calculate probability * expectation up to topk
         parents = self.ranked_parent_nfts[user_index]
         parent_nft_probs = [torch.gather(holdings, 1, parents[..., p]) for p in range(parents.shape[-1])]
-        probability = torch.prod(torch.stack(parent_nft_probs), dim=0)
+        probability = torch.prod(torch.stack(parent_nft_probs), dim=0) 
         expectation = self.ranked_parent_expectations[user_index]
 
         cum_prob = torch.cumsum(probability, dim=1)
         selection_mask = torch.where(cum_prob < self.args.breeding_topk, probability, torch.zeros_like(probability))
 
-        if self.breeding_type == 'homogeneous':
+        if self.breeding_type == 'Homogeneous':
             # calculate frequencies based on selection_mask 
-            parent_attr_freq = torch.stack([self.nft_attributes[parents[..., p]]*selection_mask for p in range(parents.shape[-1])]).sum(0)
+            parent_attr_freq = torch.stack([self.nft_attributes[parents[..., p]]*selection_mask.unsqueeze(-1) for p in range(parents.shape[-1])]).sum(dim=(0, 1, 2))
+            parent_attr_freq = parent_attr_freq/parent_attr_freq.max()
             # adjust expectation
-            child_population_factor = (torch.stack([self.nft_attributes[parents[..., p]] for p in range(parents.shape[-1])]) * parent_attr_freq).sum(0)
-            expectation = expectation / child_population_factor
-            print('todo examine!!')
+            child_population_factor = (torch.stack([self.nft_attributes[parents[..., p]] for p in range(parents.shape[-1])]) * parent_attr_freq).sum(0).mean(-1)+2
+            expectation = expectation *  torch.exp(-child_population_factor) 
 
-        U_breeding = (selection_mask * expectation).sum(1)  # increase breeding importance
+        U_breeding = (selection_mask * expectation).sum(1) 
         return U_breeding
                 
     def solve_user_demand(self, set_user_index=None):
@@ -319,13 +321,13 @@ class BaseSolver:
                 holdings = self.hatrelu(spending_var[:, :-1]*batch_budget.unsqueeze(1)/self.pricing.unsqueeze(0))
                 _utility = self.calculate_buyer_utilities(user_index, holdings, batch_budget, self.pricing)
                 _utility.backward(torch.ones_like(_utility))
+
                 buyer_utility += _utility.detach().mean().item()
                 spending[user_index] += user_eps* spending_var.grad
                 spending = torch.where(spending < 0, 0, spending)
                 spending /= spending.sum(1).unsqueeze(1)
             
             pbar.set_postfix(delta= float(spending[:, -1].sum() - spending[:, -1].sum()))
-            # user_eps *= 0.95
 
         demand = self.hatrelu(spending[:, :-1]*self.buyer_budgets.unsqueeze(1)/self.pricing.unsqueeze(0))
         return demand

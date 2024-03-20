@@ -14,13 +14,10 @@ def main():
     prepare_nft_data() # prepares nft data into files 
     
     run_experiments() 
-    
-    # run_sensitivity_tests()
-    # measure_runtime()
-    
+    run_sensitivity_tests()
+    run_runtime_tests()    
     run_ablation_tests()
-    # adjust_pruning_tests()
-
+    adjust_pruning_tests()
     # do_case_study()
 
 if __name__ == "__main__":
