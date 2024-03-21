@@ -16,7 +16,7 @@ def main():
     Run all visualizations
     """
     parser = argparse.ArgumentParser(description='Visualize NFT data')
-    parser.add_argument('-c', choices=['stats', 'main', 'sensitivity', 'ablation', 'prunning' 'all'], default='prunning')
+    parser.add_argument('-c', choices=['stats', 'main', 'sensitivity', 'ablation', 'prunning' 'all'], default='main')
     args = parser.parse_args()
     if args.c == 'stats':
         print_nft_data_stats()

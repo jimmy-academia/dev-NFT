@@ -59,7 +59,7 @@ class HetRecSysSolver(HeuristicsSolver):
 
     def train_model(self):
         train_data = torch.utils.data.TensorDataset(torch.LongTensor(self.Data))
-        train_loader = torch.utils.data.DataLoader(train_data, batch_size=128, shuffle=True, drop_last=True)
+        train_loader = torch.utils.data.DataLoader(train_data, batch_size=64, shuffle=True, drop_last=True)
 
         optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-2, weight_decay=1e-5)
         best_validate = 1e10

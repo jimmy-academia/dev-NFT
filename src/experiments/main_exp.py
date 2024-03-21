@@ -19,13 +19,14 @@ def run_experiments():
         x {Breeding_Types}
         x {Baseline_Methods}'''
     print(msg)
-    for nft_project_name in nft_project_names:
+    for nft_project_name in nft_project_names[-1:]:
         args.nft_project_name = nft_project_name
         for _breeding in Breeding_Types:
             for _method in Baseline_Methods:
                 result_file = args.checkpoint_dir / f'{nft_project_name}_{_method}_{_breeding}.pth'
                 if result_file.exists():
-                    print(f'{result_file} exists, experiment is completed.')
+                    print(f'|> {result_file} exists <|')
+                    print(f'seller_revenue {torch.load(result_file)['seller_revenue'].item()} buyer_utilities {torch.load(result_file)['buyer_utilities'][:, :2].sum(1).mean().item()}')
                 else:
                     print(f'running [{nft_project_name}, {_method}, {_breeding}] experiment...')
                     args.breeding_type = _breeding

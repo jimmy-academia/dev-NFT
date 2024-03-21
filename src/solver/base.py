@@ -270,7 +270,8 @@ class BaseSolver:
             return U_item + U_coll + R
         
         U_breeding = self.breeding_utility(holdings, user_index) 
-        U_breeding = U_breeding * (sum(U_item).detach()/(sum(U_breeding).detach()+1e-5))
+        U_breeding = U_breeding * 5000
+        # (sum(U_item).detach()/(sum(U_breeding).detach()+1e-5))
 
         if not split:
             return U_item + U_coll + U_breeding + R
@@ -289,12 +290,35 @@ class BaseSolver:
 
         if self.breeding_type == 'Homogeneous':
             # calculate frequencies based on selection_mask 
-            parent_attr_freq = torch.stack([self.nft_attributes[parents[..., p]]*selection_mask.unsqueeze(-1) for p in range(parents.shape[-1])]).sum(dim=(0, 1, 2))
+            parent_attr_freq = torch.zeros_like(self.nft_attributes[0]).float()
+            for p in range(parents.shape[-1]):
+                parent_attr_freq += (self.nft_attributes[parents[..., p]] * selection_mask.unsqueeze(-1)).sum(dim=(0, 1))
+
+            # parent_attr_freq = torch.stack([self.nft_attributes[parents[..., p]]*selection_mask.unsqueeze(-1) for p in range(parents.shape[-1])]).sum(dim=(0, 1, 2))
             parent_attr_freq = parent_attr_freq/parent_attr_freq.max()
             # adjust expectation
-            child_population_factor = (torch.stack([self.nft_attributes[parents[..., p]] for p in range(parents.shape[-1])]) * parent_attr_freq).sum(0).mean(-1)+2
-            expectation = expectation *  torch.exp(-child_population_factor) 
+            child_population_factor = torch.ones(parents.shape[1]).to(self.args.device)*2
+            
+            batch_size = 128  # Adjust the batch size based on your memory constraints
+            num_batches = (parents.shape[0] + batch_size - 1) // batch_size
+            for p in range(parents.shape[-1]):
+                attr_freq = parent_attr_freq.unsqueeze(0).unsqueeze(0)
+                attr_freq = attr_freq.expand(parents.shape[0], parents.shape[1], -1)
+                
+                for batch in range(num_batches):
+                    start_idx = batch * batch_size
+                    end_idx = min((batch + 1) * batch_size, parents.shape[0])
 
+                    batch_parents = parents[start_idx:end_idx, ..., p]
+                    batch_attr_freq = attr_freq[:end_idx-start_idx]
+
+                    batch_child_population_factor = torch.einsum('ijk,ijk->jk', self.nft_attributes[batch_parents].float(), batch_attr_freq).mean(dim=-1)
+                    child_population_factor += batch_child_population_factor
+                
+            # child_population_factor /= (parents.shape[-1])
+
+            # child_population_factor = (torch.stack([self.nft_attributes[parents[..., p]] for p in range(parents.shape[-1])]) * parent_attr_freq).sum(0).mean(-1)+2
+            expectation = expectation *  torch.exp(-child_population_factor) 
         U_breeding = (selection_mask * expectation).sum(1) 
         return U_breeding
                 
@@ -304,7 +328,7 @@ class BaseSolver:
             batch_user_iterator = [set_user_index]
         else:
             batch_user_iterator = self.buyer_budgets.argsort(descending=True).tolist()
-            batch_user_iterator = make_batch_indexes(batch_user_iterator, self.nftP.N//10)
+            batch_user_iterator = make_batch_indexes(batch_user_iterator, self.nftP.N//20)
 
         spending = torch.rand(self.nftP.N, self.nftP.M+1).to(self.args.device) # N x M+1 additional column for remaining budget
         spending /= spending.sum(1).unsqueeze(1)
