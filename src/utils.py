@@ -19,13 +19,14 @@ nft_project_names = [''.join(Project_Name.split()).lower() for Project_Name in N
 min_purchase = [6, 2, 2, 2, 1, 2, 1]
 
 Baseline_Methods = ['Random', 'Popular', 'Auction', 'Group',  'HetRecSys', 'BANTER']
+New_Baseline_Methods = ['Random', 'Popular', 'BANTER', 'Auction', 'Group',  'HetRecSys']
 # Baseline_Methods = ['Random', 'Popular', 'Greedy', 'Auction', 'Group', 'HetRecSys', 'BANTER']
-Breeding_Types = ['Heterogeneous', 'Homogeneous', 'ChildProject'] #'None'
+Breeding_Types = ['Heterogeneous', 'Homogeneous', 'ChildProject', 'None']
 
 thecolors = ['#FFD92F', '#2CA02C', '#FF7F0E', '#1F77B4', '#008080', '#D62728']
 # thecolors = ['#FFD92F', '#2CA02C', '#FF7F0E', '#1F77B4', '#008080', '#ADD8E6', '#D62728']
 themarkers = ['X', '^', 'o', 'P', 's', '*']
-thepatterns = ['*', '+', '|']
+thepatterns = ['*', '+', '|', '']
 
 
 output_dir = Path('out')
@@ -36,7 +37,7 @@ def default_args():
     args.ckpt_dir = Path('ckpt')
     args.ckpt_dir.mkdir(parents=True, exist_ok=True)
     args.device = torch.device("cuda:0")
-    args.breeding_topk = 50
+    args.breeding_topk = 100
     args.cand_lim = 50
     args.num_child_sample = 100
     args.mutation_rate = 0.1

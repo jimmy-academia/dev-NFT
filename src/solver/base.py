@@ -256,23 +256,23 @@ class BaseSolver:
         U^i_{Breeding} = sum_k topk expectation value * multistep(x^i[p], Q[p]) * multistep(x^i[q], Q[q])
         R = budgets - sum_j price_j * holdings_j
         '''
-        U_item = (holdings * (self.Vj)).sum(1)
+        U_item = (holdings * (self.Vj)).sum(1)/2
         # sub_batch operation
         chunk_size = 32 
         subtotals = []
         for sub_batch in make_batch_indexes(len(holdings), chunk_size):
             subtotals.append((holdings[sub_batch].unsqueeze(2) * self.nft_attributes).sum(1))
         subtotals = torch.cat(subtotals, dim=0) + 1
-        U_coll = (torch.log(subtotals) * self.buyer_preferences[user_index]).sum(1) * 100
+        U_coll = (torch.log(subtotals) * self.buyer_preferences[user_index]).sum(1)*50
 
         R = budgets - (holdings * pricing).sum(1)
-        if self.breeding_type == 'None':
-            return U_item + U_coll + R
-        
-        U_breeding = self.breeding_utility(holdings, user_index) 
-        U_breeding = U_breeding * 5000
-        # (sum(U_item).detach()/(sum(U_breeding).detach()+1e-5))
 
+        U_breeding = torch.zeros_like(U_item)
+        if self.breeding_type != 'None':
+            U_breeding = self.breeding_utility(holdings, user_index) 
+            scale = 2 if self.breeding_type == 'Heterogeneous' else 7
+            U_breeding = U_breeding*scale
+            # (sum(U_item).detach()/(sum(U_breeding).detach()+1e-5))
         if not split:
             return U_item + U_coll + U_breeding + R
         else:
@@ -282,7 +282,8 @@ class BaseSolver:
         # calculate probability * expectation up to topk
         parents = self.ranked_parent_nfts[user_index]
         parent_nft_probs = [torch.gather(holdings, 1, parents[..., p]) for p in range(parents.shape[-1])]
-        probability = torch.prod(torch.stack(parent_nft_probs), dim=0) 
+        probability = torch.mean(torch.stack(parent_nft_probs), dim=0) 
+        # probability = torch.prod(torch.stack(parent_nft_probs), dim=0) 
         expectation = self.ranked_parent_expectations[user_index]
 
         cum_prob = torch.cumsum(probability, dim=1)
@@ -315,10 +316,10 @@ class BaseSolver:
                     batch_child_population_factor = torch.einsum('ijk,ijk->jk', self.nft_attributes[batch_parents].float(), batch_attr_freq).mean(dim=-1)
                     child_population_factor += batch_child_population_factor
                 
-            # child_population_factor /= (parents.shape[-1])
+            child_population_factor /= (parents.shape[-1])
 
             # child_population_factor = (torch.stack([self.nft_attributes[parents[..., p]] for p in range(parents.shape[-1])]) * parent_attr_freq).sum(0).mean(-1)+2
-            expectation = expectation *  torch.exp(-child_population_factor) 
+            expectation = expectation *  torch.exp(-child_population_factor/4) 
         U_breeding = (selection_mask * expectation).sum(1) 
         return U_breeding
                 

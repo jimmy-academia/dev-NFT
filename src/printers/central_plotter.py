@@ -11,13 +11,18 @@ plt.rcParams['xtick.labelsize'] = 40
 plt.rcParams['ytick.labelsize'] = 40
 
 def line_plot(X, project_values, infos, filepath):
-    plt.figure(figsize=(12, 6), dpi=200)
+    figsize = infos['figsize'] if 'figsize' in infos else (12, 6)
+    plt.figure(figsize=figsize, dpi=200)
     plt.ylabel(infos['ylabel'])
     plt.xlabel(infos['xlabel'])
     for values, color, marker in zip(project_values, infos['colors'], infos['markers']):
         plt.plot(X, values, color=color, marker=marker, markersize=10, linewidth=3.5)
+    if infos['legends']:
+        plt.legend(infos['legends'], loc='upper left', fontsize=40)
+    if infos['no_xtic']:
+        plt.xticks([])
     plt.tight_layout()
-    plt.savefig(filepath)
+    plt.savefig(filepath, bbox_inches='tight')
     plt.close()
 
 def bar_plot(values, infos, filepath):
@@ -32,16 +37,16 @@ def bar_plot(values, infos, filepath):
     plt.close()
 
 def tripple_bar_plot(project_revenues, infos, filepath):
-    plt.figure(figsize=(12, 6), dpi=200)
+    plt.figure(figsize=(13, 6), dpi=200)
     plt.ylabel(infos['ylabel'])
     plt.ylim(infos['y_axis_min'], infos['y_axis_lim'])
 
     bar_width = 1
-    set_width = 3.5
+    set_width = 1.2*len(infos['patterns'])
     indexes = range(len(project_revenues))
     for index, rev_tripple, color in zip(indexes, project_revenues, infos['colors']):
         for k, (rev, pat) in enumerate(zip(rev_tripple, infos['patterns'])):
-            plt.bar(index*set_width+k*(bar_width+0.1), rev, bar_width, color=color, edgecolor='black', hatch=pat*2)
+            plt.bar(index*set_width+k*(bar_width+0.2), rev, bar_width, color=color, edgecolor='black', hatch=pat*2)
     plt.xticks([])
     plt.tight_layout()
     plt.savefig(filepath, bbox_inches='tight') # bbox_inches='tight'??
@@ -57,8 +62,9 @@ def make_legend(legends, filepath, tag, colors, patterns=None, markers=None):
     elif tag == 'line':
         [ax.plot(0, 0, color=colors[i], label=legends[i], marker=markers[i], markersize=30, linewidth=12)  for i in range(len(legends))]
     elif tag == 'tripple':
-        bars = [ax.bar(0,0, color=colors[i], label=legends[i]) for i in range(len(legends) - 3)]
-        bars += [ax.bar(0,0, color='white', edgecolor='black', hatch=patterns[i], label=legends[i-3]) for i in range(3)]
+        num_breed = 4
+        bars = [ax.bar(0,0, color=colors[i], label=legends[i]) for i in range(len(legends) - num_breed)]
+        bars += [ax.bar(0,0, color='white', edgecolor='black', hatch=patterns[i], label=legends[i-num_breed]) for i in range(num_breed)]
     else:
         raise Exception(f'{tag} not found')
 

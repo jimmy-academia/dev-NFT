@@ -15,29 +15,29 @@ def run_sensitivity_tests():
 
     print('>>> (sensitivity.py) Sensitivity tests \n')
     msg = f'''
-         {nft_project_names[-2:-1]}
-        x {Breeding_Types[2:3]}
+         {nft_project_names}
+        x {Breeding_Types}
         x {Baseline_Methods}
         x num or budget
         x 10 scales
         '''
     print(msg)
-    for nft_project_name in nft_project_names[-2:-1]:
+    for nft_project_name in nft_project_names[0:1]:
         args.nft_project_name = nft_project_name
-        for _breeding in Breeding_Types[2:3]:
+        for _breeding in Breeding_Types:
             args.breeding_type = _breeding
-            for _method in Baseline_Methods:
-                for tag in ['num', 'bud']:
-                    for scale in range(1, 11):
-                        result_file = args.checkpoint_dir / f'{nft_project_name}_{_method}_{_breeding}_{tag}{scale}.pth'
-                        if result_file.exists():
-                            print(f'{result_file} exists, experiment is completed.')
-                            continue
-                        if scale == 10 and tag == 'bud':
-                            # original version, just copy results
-                            shutil.copy(args.ckpt_dir/'main_exp'/f'{nft_project_name}_{_method}_{_breeding}.pth', result_file)
-                            continue
+            for tag in ['num', 'bud']:
+                compact_results = {'revenue':[], 'utility':[], 'runtime':[]}
+                new_result_path = args.checkpoint_dir / f'{nft_project_name}_{_breeding}_{tag}.pth'
+                if new_result_path.exists():
+                    print(f'{new_result_path} exists, experiment is completed.')
+                    continue
 
+                for _method in Baseline_Methods:
+                    method_revenue = []
+                    method_utility = []
+                    method_runtime = []
+                    for scale in range(1, 11):
                         print(f'running [{nft_project_name}_{_method}_{_breeding}_{tag}{scale}] experiment...')
 
                         args.setN = None if tag == 'bud' else int(N_M_infos[nft_project_name]['N']/10 * scale)
@@ -49,17 +49,17 @@ def run_sensitivity_tests():
                         Solver.solve()  
                         runtime = time.time() - start
                         Solver.evaluate() # evaluate buyer utility, seller revenue
-                        Result = {
-                            'runtime': runtime,
-                            'seller_revenue': Solver.seller_revenue,
-                            'buyer_utilities': Solver.buyer_utilities, 
-                            'pricing': Solver.pricing, 
-                            'holdings': Solver.holdings, 
-                            'buyer_budgets': Solver.buyer_budgets,
-                            'nft_counts': Solver.nft_counts,
-                        }
-                        torch.save(deep_to_cpu(Result), result_file)
-                        print('____________________________________ experiment done.')
 
-def run_runtime_tests():
-    pass
+                        method_revenue.append(Solver.seller_revenue.item())
+                        if _method == 'BANTER':
+                            method_utility.append(Solver.buyer_utilities[:, :3].sum(1).mean().item())  ## average buyer utility
+                        else:
+                            method_utility.append(Solver.buyer_utilities[:, :2].sum(1).mean().item())  ## no breeding 
+                        method_runtime.append(runtime)
+                compact_results['revenue'].append(method_revenue)
+                compact_results['utility'].append(method_utility)
+                compact_results['runtime'].append(method_runtime)
+
+                torch.save(compact_results, new_result_path)
+                print('____________________________________ experiment done.')
+
