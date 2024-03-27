@@ -21,7 +21,7 @@ class BaseSolver:
             self.nftP = NFTProject(nft_project_data, args.setN, args.setM, args.nft_project_name)
             torch.save(self.nftP, cache_nft_project_file)
         
-        self.child_population_factor = 1
+        self.population_factor = 1
         self.num_traits = len(self.nftP.trait_dict)
         self.num_selections_list = [len(options) for (_, options) in self.nftP.trait_dict.items()]
         self.max_selections = max(self.num_selections_list)
@@ -41,7 +41,7 @@ class BaseSolver:
                 torch_cleansave((self.nft_trait_divisions, self.nft_attribute_classes, self.buyer_types), cache_heter_labels_path)
 
         if self.breeding_type != 'None':
-            cache_parents_path = cache_dir / f'parents_{args.breeding_type}_{args.num_child_sample}_{args.mutation_rate}.pth'
+            cache_parents_path = cache_dir / f'parents_{args.breeding_type}_{args.num_child_sample}_{args.mutation_rate}_mod{args.module_id}.pth'
             if cache_parents_path.exists():
                 self.ranked_parent_nfts, self.ranked_parent_expectations = torch_cleanload(cache_parents_path, self.args.device)
             else:
@@ -135,45 +135,65 @@ class BaseSolver:
         '''
         estimate expectation value for each parent pair
         sort parent nfts by expectation value
-        yields self.ranked_parent_nfts, self.ranked_paraent_expectations
+        yields ranked_parent_nfts, ranked_parent_expectations
         '''
         if self.breeding_type == 'Heterogeneous':
-            niche_buyer_ids, eclectic_buyer_ids = [torch.where(self.buyer_types==i)[0] for i in range(2)]
-            parent_nft_candidates = (self.Uij * self.Vj).topk(self.args.cand_lim)[1]
-            parent_nft_sets = self.batch_assembling(self.nft_trait_divisions, parent_nft_candidates)
-            # niche
-            ## count number of same attribute class
-            niche_sets = parent_nft_sets[niche_buyer_ids]
-            labeled_sets = self.nft_attribute_classes[niche_sets]
-            majority_label = labeled_sets.mode(dim=-1)[0].unsqueeze(-1).expand_as(labeled_sets)
-            same_class_count = (labeled_sets == majority_label).sum(-1)
-            del majority_label
-
-            # eclectic
-            eclectic_sets = parent_nft_sets[eclectic_buyer_ids]
-            labeled_sets = self.nft_attribute_classes[eclectic_sets]
-            hash_map = torch.cartesian_prod(*[torch.arange(self.args.num_attr_class)]*self.args.num_trait_div).to(self.args.device)
-            hash_map = hash_map.sort()[0].unique(dim=0)
-            num_unique = torch.LongTensor([len(hash.unique()) for hash in hash_map]).to(self.args.device)
+            if self.args.module_id == 2:
+                # random
+                parent_nft_candidate = torch.stack([torch.randperm(self.nftP.M)[:self.args.cand_lim] for __ in range(self.nftP.N)]).to(self.args.device)
+            else:
+                parent_nft_candidate = (self.Uij * self.Vj).topk(self.args.cand_lim)[1]
             
-            query = labeled_sets.view(-1, self.args.num_trait_div).sort(-1)[0]
-            matching_indices = torch.full((query.size(0),), -1, dtype=torch.long, device=query.device)  # Fill with -1 to indicate no match by default
-            for i, hash in enumerate(hash_map):
-                matches = (query == hash).all(dim=1)
-                matching_indices[matches] = i
-            div_class_count = num_unique[matching_indices].view(labeled_sets.shape[:2])
-
-            del hash_map, query, matching_indices, num_unique
-            ## interleave same_class_count and div_class_count to get the final expectation together
-            _class_count = torch.zeros(parent_nft_sets.shape[:2], dtype=torch.long, device=self.args.device)
-            _class_count[niche_buyer_ids] = same_class_count
-            _class_count[eclectic_buyer_ids] = div_class_count
+            parent_nft_sets = self.batch_assembling(self.nft_trait_divisions, parent_nft_candidate)
             breeding_expectation_values = (self.Uij * self.Vj).unsqueeze(1).expand(-1, parent_nft_sets.size(1), -1).gather(2, parent_nft_sets).sum(-1)
-            breeding_expectation_values *= _class_count
-            del same_class_count, div_class_count, _class_count
-            torch.cuda.empty_cache()  # Release CUDA memory
+
+            if self.args.module_id == 0:
+                # attribute class alignment
+                niche_buyer_ids, eclectic_buyer_ids = [torch.where(self.buyer_types==i)[0] for i in range(2)]
+                # niche
+                ## count number of same attribute class
+                niche_sets = parent_nft_sets[niche_buyer_ids]
+                labeled_sets = self.nft_attribute_classes[niche_sets]
+                majority_label = labeled_sets.mode(dim=-1)[0].unsqueeze(-1).expand_as(labeled_sets)
+                same_class_count = (labeled_sets == majority_label).sum(-1)
+                del majority_label
+
+                # eclectic
+                eclectic_sets = parent_nft_sets[eclectic_buyer_ids]
+                labeled_sets = self.nft_attribute_classes[eclectic_sets]
+                hash_map = torch.cartesian_prod(*[torch.arange(self.args.num_attr_class)]*self.args.num_trait_div).to(self.args.device)
+                hash_map = hash_map.sort()[0].unique(dim=0)
+                num_unique = torch.LongTensor([len(hash.unique()) for hash in hash_map]).to(self.args.device)
+                
+                query = labeled_sets.view(-1, self.args.num_trait_div).sort(-1)[0]
+                matching_indices = torch.full((query.size(0),), -1, dtype=torch.long, device=query.device)  # Fill with -1 to indicate no match by default
+                for i, hash in enumerate(hash_map):
+                    matches = (query == hash).all(dim=1)
+                    matching_indices[matches] = i
+                div_class_count = num_unique[matching_indices].view(labeled_sets.shape[:2])
+
+                del hash_map, query, matching_indices, num_unique
+                ## interleave same_class_count and div_class_count to get the final expectation together
+                _class_count = torch.zeros(parent_nft_sets.shape[:2], dtype=torch.long, device=self.args.device)
+                _class_count[niche_buyer_ids] = same_class_count
+                _class_count[eclectic_buyer_ids] = div_class_count
+
+                # attribute class alignment
+                breeding_expectation_values *= _class_count
+                del same_class_count, div_class_count, _class_count
+                torch.cuda.empty_cache()  # Release CUDA memory
         else:
-            parent_nft_candidate = (self.Uij * self.Vj).topk(self.args.cand_lim)[1]
+            if self.args.module_id == 0:
+                if self.breeding_type == 'Homogeneous': 
+                    attr_freq = self.nft_attributes.float().sum(0)
+                    population_factor = (self.nft_attributes * attr_freq).sum(1)
+                    parent_nft_candidate = (self.Uij * self.Vj*population_factor).topk(self.args.cand_lim)[1]
+                elif self.breeding_type == 'ChildProject':
+                    parent_nft_candidate = (self.Uij * self.Vj).topk(self.args.cand_lim)[1]
+            elif self.args.module_id == 1:
+                parent_nft_candidate = (self.Uij * self.Vj).topk(self.args.cand_lim)[1]
+            elif self.args.module_id == 2:
+                parent_nft_candidate = torch.stack([torch.randperm(self.nftP.M)[:self.args.cand_lim] for __ in range(self.nftP.N)]).to(self.args.device)
             chunk_size = 32
             parent_nft_sets = []
             breeding_expectation_values = []
@@ -273,6 +293,8 @@ class BaseSolver:
             scale = 2 if self.breeding_type == 'Heterogeneous' else 7
             U_breeding = U_breeding*scale
             # (sum(U_item).detach()/(sum(U_breeding).detach()+1e-5))
+
+        self.ratio = U_item.detach().sum()/U_breeding.detach().sum()
         if not split:
             return U_item + U_coll + U_breeding + R
         else:
@@ -298,7 +320,7 @@ class BaseSolver:
             # parent_attr_freq = torch.stack([self.nft_attributes[parents[..., p]]*selection_mask.unsqueeze(-1) for p in range(parents.shape[-1])]).sum(dim=(0, 1, 2))
             parent_attr_freq = parent_attr_freq/parent_attr_freq.max()
             # adjust expectation
-            child_population_factor = torch.ones(parents.shape[1]).to(self.args.device)*2
+            population_factor = torch.ones(parents.shape[1]).to(self.args.device)*2
             
             batch_size = 128  # Adjust the batch size based on your memory constraints
             num_batches = (parents.shape[0] + batch_size - 1) // batch_size
@@ -313,13 +335,13 @@ class BaseSolver:
                     batch_parents = parents[start_idx:end_idx, ..., p]
                     batch_attr_freq = attr_freq[:end_idx-start_idx]
 
-                    batch_child_population_factor = torch.einsum('ijk,ijk->jk', self.nft_attributes[batch_parents].float(), batch_attr_freq).mean(dim=-1)
-                    child_population_factor += batch_child_population_factor
+                    batch_population_factor = torch.einsum('ijk,ijk->jk', self.nft_attributes[batch_parents].float(), batch_attr_freq).mean(dim=-1)
+                    population_factor += batch_population_factor
                 
-            child_population_factor /= (parents.shape[-1])
+            population_factor /= (parents.shape[-1])
 
-            # child_population_factor = (torch.stack([self.nft_attributes[parents[..., p]] for p in range(parents.shape[-1])]) * parent_attr_freq).sum(0).mean(-1)+2
-            expectation = expectation *  torch.exp(-child_population_factor/4) 
+            # population_factor = (torch.stack([self.nft_attributes[parents[..., p]] for p in range(parents.shape[-1])]) * parent_attr_freq).sum(0).mean(-1)+2
+            expectation = expectation *  torch.exp(-population_factor/4) 
         U_breeding = (selection_mask * expectation).sum(1) 
         return U_breeding
                 

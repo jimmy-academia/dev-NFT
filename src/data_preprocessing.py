@@ -38,7 +38,7 @@ def load_nft_project(project_name, tiny_dir, data_files):
     '''
     trade_info, NFT_info, trait_system = map(loadj, data_files)
     NFT_info, trait_system = filter_nft_attributes(project_name, NFT_info, trait_system)
-    nft_project_data = process_nft_trades(trade_info['result'], NFT_info, trait_system, project_name=='stepn')
+    nft_project_data = process_nft_trades(trade_info['result'], NFT_info, trait_system, project_name)
     return nft_project_data
 
 def filter_nft_attributes(project_name: str, NFT_info: list, trait_system: dict) -> tuple:
@@ -90,13 +90,14 @@ def Augment_StepN(asset_traits, trait_system):
 def fetchinfo(transaction):
     return transaction['buyer_address'], int(transaction['price']), int(transaction['token_ids'][0])
 
-def process_nft_trades(trade_info, NFT_info, trait_system, random_match=False):
+def process_nft_trades(trade_info, NFT_info, trait_system, project_name):
     '''
     nft_project_data: dict_keys(['trait_system', 
     'asset_traits', 'item_counts', => size N
     'buyer_budgets', 'buyer_assets_ids', => size M])
     '''
     # Initialize dictionaries for buyers and assets
+    random_match = True if project_name=='stepn' else False
     buyer_info = defaultdict(lambda: {'budget': 0, 'asset_ids': []})
     asset_info = {'asset_traits':[], 'item_counts':[], 'atuples':[]}
 
@@ -114,14 +115,15 @@ def process_nft_trades(trade_info, NFT_info, trait_system, random_match=False):
                 aid = len(asset_info['atuples'])
                 asset_info['atuples'].append(atuple)
                 asset_info['asset_traits'].append(asset_trait)
-                asset_info['item_counts'].append(0)
+                asset_info['item_counts'].append(1)
             else:
                 aid = asset_info['atuples'].index(atuple)
-                asset_info['item_counts'][aid] += 1
+                if project_name not in ['boredapeyachtclub', 'fatapeclub', 'roaringleader']:
+                    asset_info['item_counts'][aid] += 1
             
             buyer_info[buyer_add]['budget'] += price
             buyer_info[buyer_add]['asset_ids'].append(aid)
-            
+    
     nft_project_data = {
         'trait_system': trait_system,
         'asset_traits': asset_info['asset_traits'],

@@ -23,10 +23,10 @@ New_Baseline_Methods = ['Random', 'Popular', 'BANTER', 'Auction', 'Group',  'Het
 # Baseline_Methods = ['Random', 'Popular', 'Greedy', 'Auction', 'Group', 'HetRecSys', 'BANTER']
 Breeding_Types = ['Heterogeneous', 'Homogeneous', 'ChildProject', 'None']
 
-thecolors = ['#FFD92F', '#2CA02C', '#FF7F0E', '#1F77B4', '#008080', '#D62728']
+thecolors = ['#FFD92F', '#2CA02C', '#FF7F0E', '#1770af', '#ADD8E6', '#D62728']
 # thecolors = ['#FFD92F', '#2CA02C', '#FF7F0E', '#1F77B4', '#008080', '#ADD8E6', '#D62728']
 themarkers = ['X', '^', 'o', 'P', 's', '*']
-thepatterns = ['*', '+', '|', '']
+thepatterns = ['.', '-', 'x', '']
 
 
 output_dir = Path('out')
@@ -45,6 +45,11 @@ def default_args():
     args.num_attr_class = 4
     args.decay = 0.9
     args.ablation_id = 0
+
+    args.schedule_id = 0 # 0: dynamic, 1: fix weight 2: none
+    args.module_id = 0 # 0: f_pop *TildeV (homo)/TildeV+attrclass (heter) 1:TildeV 2:rand
+    args.gamma1 = 0.1
+    args.gamma2 = 0.001
     return args
 
 # def set_seeds(seed):

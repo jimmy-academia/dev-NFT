@@ -3,8 +3,8 @@ from utils import *
 
 class NFTProject:
     def __init__(self, nft_project_data, setN, setM, nft_project_name):
-        self.N = setN 
-        self.M = setM 
+        self.setN = setN 
+        self.setM = setM 
         self.nft_project_name = nft_project_name
         self.trait_dict = nft_project_data['trait_system']
         self.numericalize(nft_project_data)
@@ -14,12 +14,12 @@ class NFTProject:
 
         max_aid_len = max([len(x) for x in buyer_assets_ids])
         min_aid_len = min_purchase[nft_project_names.index(self.nft_project_name)] # filter buyers with min purchases
-        user_preferences = []
-        buyer_num = self.N if self.N is not None else len(buyer_assets_ids)
+        alluser_prefs = []
+        buyer_num = self.setN if self.setN is not None else len(buyer_assets_ids)
+
         aid_set = set()
-        bid_list = []
         num_trades = 0
-        for i in range(buyer_num):
+        for i in range(min(buyer_num, len(buyer_assets_ids))):
             num_trades += len(buyer_assets_ids[i])
             if len(buyer_assets_ids[i]) < min_aid_len:
                 continue
@@ -28,15 +28,19 @@ class NFTProject:
             # pad until max length, then change shape
             user_prefs = user_prefs + [user_prefs[-1]] * (max_aid_len - len(user_prefs))
             user_prefs = [list(x) for x in zip(*user_prefs)]
-            user_preferences.append(user_prefs)
-            bid_list.append(i)
+            alluser_prefs.append(user_prefs)
 
-        self.N = len(bid_list)
-        self.M = len(aid_set) #filter items purchased by buyers
+        self.N = self.setN if self.setN is not None else len(buyer_assets_ids)
+        self.M = self.setM if self.setM is not None else len(aid_set)
+
+        bid_list = list(range(self.N))
+        aid_set = list(aid_set)
+        aid_set = [aid_set[i%len(aid_set)] for i in range(self.M)]
+
         self.item_attributes = self.trait2label_vec([asset_traits[i] for i in aid_set])
-        self.user_preferences = user_preferences
-        self.user_budgets = [buyer_budgets[bi] for bi in bid_list]
-        self.item_counts = [item_counts[i]+1 for i in aid_set]
+        self.user_preferences = [alluser_prefs[i%len(alluser_prefs)] for i in range(self.M)]
+        self.user_budgets = [buyer_budgets[bi% len(buyer_budgets)] for bi in bid_list]
+        self.item_counts = [item_counts[i% len(item_counts)] for i in aid_set]
         self.num_trades = num_trades
 
     def trait2label_vec(self, asset_traits):

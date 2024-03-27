@@ -34,13 +34,18 @@ class BANTERSolver(BaseSolver):
             demand = self.solve_user_demand()
             demand = demand.sum(0)
             excess = demand - self.nft_counts
-            # old_self.pricing = self.pricing.clone()
+
+            if self.args.schedule_id == 0:
+                eps = eps*torch.exp(-self.args.gamma1*excess.norm().sum()/self.nft_counts.sum() \
+                + self.args.gamma2 * torch.tanh(self.ratio - 1))
+            elif self.args.schedule_id == 1:
+                eps = eps * 0.9
+
             self.pricing *= ( 1 +  eps * excess/(excess.abs().sum()))
             self.pricing = torch.where(self.pricing < 1e-10, 1e-10, self.pricing) 
             pbar.set_postfix(excess=float(excess.sum()))
 
-            if self.args.ablation_id < 2:
-                eps *= self.args.decay
+            # eps *= self.args.decay
         
         self.holdings = self.solve_user_demand()
 
