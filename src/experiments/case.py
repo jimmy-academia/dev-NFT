@@ -37,17 +37,17 @@ def do_case_study():
         for x, batch_ids in enumerate(make_batch_indexes(sorted_indices, numk)):
             homo_line.append(torch.mean(homo_price[batch_ids]).item())
             child_line.append(torch.mean(child_price[batch_ids]).item())
-            X.append(x)
-        homo_line.reverse()
-        child_line.reverse()
+            X.append(torch.mean(Solver.Vj[batch_ids]).item())
+        # homo_line.reverse()
+        # child_line.reverse()
+        # X.reverse()
         infos = {
             'figsize': (10,6),
             'ylabel': 'Pricing',
-            'xlabel': 'Rarity',
+            'xlabel': 'Rarity (V)',
             'colors': case_colors,
             'markers': ['P', 'X'],
             'legends': ['Homogeneous', 'ChildProject'],
-            'no_xtic': True
         }
         line_plot(X, [homo_line, child_line], infos, lineplot1)
 

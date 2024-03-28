@@ -37,6 +37,28 @@ def bar_plot(values, infos, filepath):
     plt.savefig(filepath, bbox_inches='tight') # bbox_inches='tight'??
     plt.close()
 
+def rainbow_bar_plot(project_revenues, infos, filepath):
+    plt.figure(figsize=(13, 6), dpi=200)
+    plt.ylabel(infos['ylabel'])
+    plt.ylim(infos['y_axis_min'], infos['y_axis_lim'])
+
+    bar_width = 1
+    set_width = 1.2*len(infos['colors']) + 0.6
+    indexes = range(len(project_revenues))
+    for index, rev_rainbow in zip(indexes, project_revenues):
+        for k, (rev, color) in enumerate(zip(rev_rainbow, infos['colors'])):
+            plt.bar(index*set_width+k*(bar_width+0.2), rev, bar_width, color=color)
+        if index != len(project_revenues) - 1:
+            plt.axvline(x=index*set_width+(k+1)*(bar_width+0.2)-0.2, color='black', linestyle=':', linewidth=3)
+    
+    if infos['xticks'] is None:
+        plt.xticks([])
+    else:
+        plt.xticks([index*set_width+ (len(infos['colors'])-1)/2 *(bar_width+0.2) for index in range(len(project_revenues))], infos['xticks'], fontsize=50)
+    plt.tight_layout()
+    plt.savefig(filepath, bbox_inches='tight') # bbox_inches='tight'??
+    plt.close()
+
 def tripple_bar_plot(project_revenues, infos, filepath):
     plt.figure(figsize=(13, 6), dpi=200)
     plt.ylabel(infos['ylabel'])

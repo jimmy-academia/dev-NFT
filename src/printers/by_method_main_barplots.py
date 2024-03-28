@@ -1,7 +1,7 @@
 import torch
 from pathlib import Path
 
-from .central_plotter import make_legend, rainbow_bar_plot
+from .central_plotter import make_legend, tripple_bar_plot
 from utils import *
 
 def plot_main_exp():
@@ -15,35 +15,30 @@ def plot_main_exp():
                 continue
 
             project_values = []
-            # xticks = None
-            # xticks = ['Hetero-\ngeneous', 'Homo-\ngeneous', 'Child\nProject', 'No\nBreeding']
-            xticks = ['Heter', 'Homo', 'Child', 'None']
-
-            for _breeding in Breeding_Types:
-                breed_vals = []
-                for _method in Baseline_Methods:
+            for _method in Baseline_Methods:
+                method_vals = []
+                for _breeding in Breeding_Types:
                     filepth = Path(f'ckpt/main_exp/{nft_project_name}_{_method}_{_breeding}.pth')
                     if filepth.exists():
                         if tag == 'revenue':
-                            breed_vals.append(torch.load(filepth)['seller_revenue'].item())
+                            method_vals.append(torch.load(filepth)['seller_revenue'].item())
                         elif tag == 'buyer_utility':
                             if _method == 'BANTER':
-                                breed_vals.append(torch.load(filepth)['buyer_utilities'][:, :3].sum(1).mean().item())  ## average buyer utility
+                                method_vals.append(torch.load(filepth)['buyer_utilities'][:, :3].sum(1).mean().item())  ## average buyer utility
                             else:
-                                breed_vals.append(torch.load(filepth)['buyer_utilities'][:, :2].sum(1).mean().item())  ## no breeding recommendation
+                                method_vals.append(torch.load(filepth)['buyer_utilities'][:, :2].sum(1).mean().item())  ## no breeding recommendation
                         elif tag == 'runtime':
-                            breed_vals.append(torch.load(filepth)['runtime'])
-                            # xticks = ['Hetero-\ngeneous', 'Homo-\ngeneous', 'Child\nProject', 'No\nBreeding']
+                            method_vals.append(torch.load(filepth)['runtime'])
                     else:
-                        breed_vals.append(0)
-                project_values.append(breed_vals)
+                        method_vals.append(0)
+                project_values.append(method_vals)
 
             # set plot height
-            y_axis_lim = max([max(breed_vals) for breed_vals in project_values])
+            y_axis_lim = max([max(method_vals) for method_vals in project_values])
             # _increase =  if tag == 'runtime' else 0.1
             y_axis_lim = y_axis_lim + 0.1 * y_axis_lim
 
-            y_axis_min = min([min(breed_vals) for breed_vals in project_values]) if tag == 'runtime' else 0
+            y_axis_min = min([min(method_vals) for method_vals in project_values]) if tag == 'runtime' else 0
             y_axis_min = y_axis_min - 0.1 * y_axis_min
 
             infos = {
@@ -52,14 +47,14 @@ def plot_main_exp():
                 'y_axis_lim': y_axis_lim,
                 'y_axis_min': y_axis_min,
                 'colors': thecolors,
-                'xticks': xticks,
+                'patterns': thepatterns,
             }
-            rainbow_bar_plot(project_values, infos, filepath)
+            tripple_bar_plot(project_values, infos, filepath)
 
     filepath = output_dir/out_sub_dir/'legend.jpg'
     if check_file_exists(filepath, 'main_exp legends'):
         return
-    make_legend(Baseline_Methods, filepath, 'bar', thecolors)
+    make_legend(Baseline_Methods + Breeding_Types, filepath, 'tripple', thecolors, thepatterns)
 
 
 
