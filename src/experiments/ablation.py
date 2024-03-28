@@ -59,14 +59,14 @@ def run_module_tests():
     msg = f'''
          {nft_project_names[3:4]}
         x {Breeding_Types} x BANTER
-        x 3 Module (0: original, 1:Vtilde, 2:random)
+        x 3 Module (0: original, 1:objective, 2:random, 3: worst)
         '''
     print(msg)
     for nft_project_name in nft_project_names[3:4]:
         args.nft_project_name = nft_project_name
         for _breeding in Breeding_Types:
             args.breeding_type = _breeding
-            for module_id in range(3):
+            for module_id in range(4):
                 result_file = args.checkpoint_dir / f'{nft_project_name}_{_breeding}_module{module_id}.pth'
                 if result_file.exists():
                     print(f'{result_file} exists, experiment is completed.')

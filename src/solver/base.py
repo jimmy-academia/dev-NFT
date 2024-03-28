@@ -43,8 +43,10 @@ class BaseSolver:
         if self.breeding_type != 'None':
             cache_parents_path = cache_dir / f'parents_{args.breeding_type}_{args.num_child_sample}_{args.mutation_rate}_mod{args.module_id}.pth'
             if cache_parents_path.exists():
+                print('loading from...', cache_parents_path)
                 self.ranked_parent_nfts, self.ranked_parent_expectations = torch_cleanload(cache_parents_path, self.args.device)
             else:
+                print('saving to...', cache_parents_path)
                 self.ranked_parent_nfts, self.ranked_parent_expectations = self.prepare_parent_nfts()
                 torch_cleansave((self.ranked_parent_nfts, self.ranked_parent_expectations), cache_parents_path)
 
@@ -119,6 +121,8 @@ class BaseSolver:
         combos = []
         for candidates in tqdm(batch_candidates, ncols=88, desc='assembling', leave=False):
             labels_vector = trait_divisions[candidates]
+            if all(labels_vector == labels_vector[0]):
+                labels_vector[:len(labels_vector)//2] = 1- labels_vector[0]
             unique_labels = labels_vector.unique(sorted=True)
             indices_list = [(labels_vector == label).nonzero(as_tuple=True)[0] for label in unique_labels]
             rank_list = [torch.arange(len(indices)) for indices in indices_list]
@@ -140,9 +144,15 @@ class BaseSolver:
         if self.breeding_type == 'Heterogeneous':
             if self.args.module_id == 2:
                 # random
-                parent_nft_candidate = torch.stack([torch.randperm(self.nftP.M)[:self.args.cand_lim] for __ in range(self.nftP.N)]).to(self.args.device)
-            else:
+                mask = (torch.rand(self.nftP.N, self.args.cand_lim) > 0.5).long().to(self.args.device)
+                parent_nft_candidate = mask * (self.Uij * self.Vj).topk(self.args.cand_lim)[1] + (1-mask) * (self.Uij * self.Vj).topk(self.args.cand_lim, largest=False)[1]
+            elif self.args.module_id ==0: # in [0,1]:
                 parent_nft_candidate = (self.Uij * self.Vj).topk(self.args.cand_lim)[1]
+            elif self.args.module_id == 1:
+                parent_nft_candidate = torch.stack([self.Vj.topk(self.args.cand_lim)[1] for __ in range(self.nftP.N)]).to(self.args.device)
+            elif self.args.module_id == 3:
+                parent_nft_candidate = (self.Uij * self.Vj).topk(self.args.cand_lim, largest=False)[1]
+
             
             parent_nft_sets = self.batch_assembling(self.nft_trait_divisions, parent_nft_candidate)
             breeding_expectation_values = (self.Uij * self.Vj).unsqueeze(1).expand(-1, parent_nft_sets.size(1), -1).gather(2, parent_nft_sets).sum(-1)
@@ -191,9 +201,18 @@ class BaseSolver:
                 elif self.breeding_type == 'ChildProject':
                     parent_nft_candidate = (self.Uij * self.Vj).topk(self.args.cand_lim)[1]
             elif self.args.module_id == 1:
-                parent_nft_candidate = (self.Uij * self.Vj).topk(self.args.cand_lim)[1]
+                parent_nft_candidate = torch.stack([self.Vj.topk(self.args.cand_lim)[1] for __ in range(self.nftP.N)]).to(self.args.device)
+                # (self.Uij * self.Vj).topk(self.args.cand_lim)[1]
             elif self.args.module_id == 2:
                 parent_nft_candidate = torch.stack([torch.randperm(self.nftP.M)[:self.args.cand_lim] for __ in range(self.nftP.N)]).to(self.args.device)
+            elif self.args.module_id == 3:
+                if self.breeding_type == 'Homogeneous': 
+                    attr_freq = self.nft_attributes.float().sum(0)
+                    population_factor = (self.nft_attributes * attr_freq).sum(1)
+                    parent_nft_candidate = (self.Uij * self.Vj*population_factor).topk(self.args.cand_lim, largest=False)[1]
+                elif self.breeding_type == 'ChildProject':
+                    parent_nft_candidate = (self.Uij * self.Vj).topk(self.args.cand_lim, largest=False)[1]
+                    
             chunk_size = 32
             parent_nft_sets = []
             breeding_expectation_values = []
@@ -305,7 +324,6 @@ class BaseSolver:
         parents = self.ranked_parent_nfts[user_index]
         parent_nft_probs = [torch.gather(holdings, 1, parents[..., p]) for p in range(parents.shape[-1])]
         probability = torch.mean(torch.stack(parent_nft_probs), dim=0) 
-        # probability = torch.prod(torch.stack(parent_nft_probs), dim=0) 
         expectation = self.ranked_parent_expectations[user_index]
 
         cum_prob = torch.cumsum(probability, dim=1)
@@ -317,7 +335,6 @@ class BaseSolver:
             for p in range(parents.shape[-1]):
                 parent_attr_freq += (self.nft_attributes[parents[..., p]] * selection_mask.unsqueeze(-1)).sum(dim=(0, 1))
 
-            # parent_attr_freq = torch.stack([self.nft_attributes[parents[..., p]]*selection_mask.unsqueeze(-1) for p in range(parents.shape[-1])]).sum(dim=(0, 1, 2))
             parent_attr_freq = parent_attr_freq/parent_attr_freq.max()
             # adjust expectation
             population_factor = torch.ones(parents.shape[1]).to(self.args.device)*2

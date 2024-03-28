@@ -17,9 +17,9 @@ def line_plot(X, project_values, infos, filepath):
     plt.xlabel(infos['xlabel'])
     for values, color, marker in zip(project_values, infos['colors'], infos['markers']):
         plt.plot(X, values, color=color, marker=marker, markersize=10, linewidth=3.5)
-    if infos['legends']:
-        plt.legend(infos['legends'], loc='upper left', fontsize=40)
-    if infos['no_xtic']:
+    if 'legends' in infos:
+        plt.legend(infos['legends'], loc='upper left', fontsize=24)
+    if 'no_xtic' in infos and infos['no_xtic']:
         plt.xticks([])
     plt.tight_layout()
     plt.savefig(filepath, bbox_inches='tight')
@@ -28,7 +28,8 @@ def line_plot(X, project_values, infos, filepath):
 def bar_plot(values, infos, filepath):
     plt.figure(figsize=(8, 6), dpi=200)
     plt.ylabel(infos['ylabel'])
-    plt.ylim(0, infos['y_axis_lim'])
+    y_min = infos['y_axis_min'] if 'y_axis_min' in infos else 0
+    plt.ylim(y_min, infos['y_axis_lim'])
     for x, val, color in zip(range(len(values)), values, infos['colors']):
         plt.bar(x, val, color=color)
     plt.xticks([])
@@ -47,6 +48,7 @@ def tripple_bar_plot(project_revenues, infos, filepath):
     for index, rev_tripple, color in zip(indexes, project_revenues, infos['colors']):
         for k, (rev, pat) in enumerate(zip(rev_tripple, infos['patterns'])):
             plt.bar(index*set_width+k*(bar_width+0.2), rev, bar_width, color=color, edgecolor='black', hatch=pat*2)
+
     plt.xticks([])
     plt.tight_layout()
     plt.savefig(filepath, bbox_inches='tight') # bbox_inches='tight'??

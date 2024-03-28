@@ -15,14 +15,14 @@ def run_sensitivity_tests():
 
     print('>>> (sensitivity.py) Sensitivity tests \n')
     msg = f'''
-         {nft_project_names}
+         {nft_project_names[3:]}
         x {Breeding_Types}
         x {Baseline_Methods}
         x num or budget
         x 10 scales
         '''
     print(msg)
-    for nft_project_name in nft_project_names[0:1]:
+    for nft_project_name in nft_project_names[3:]:
         args.nft_project_name = nft_project_name
         for _breeding in Breeding_Types:
             args.breeding_type = _breeding
