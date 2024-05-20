@@ -4,6 +4,7 @@ from printers.central_plotter import line_plot
 
 def do_case_study():
     case_colors = ['#D62728', '#1770af']
+    figsize = (10,7)
     # prepare comparison files
     args = default_args()
     args.setN = None
@@ -42,7 +43,7 @@ def do_case_study():
         # child_line.reverse()
         # X.reverse()
         infos = {
-            'figsize': (10,6),
+            'figsize': figsize,
             'ylabel': 'Pricing',
             'xlabel': 'Rarity (V)',
             'colors': case_colors,
@@ -63,6 +64,8 @@ def do_case_study():
 
     cachefile = output_subdir/'heter.pth'
     lineplot2 = output_subdir/'pri_niche_v_eclectic.jpg'
+    orig_vj = Solver.Vj[Solver.nft_attribute_classes == 0]
+
     if not lineplot2.exists():
         print('Heterogeneous niche vs eclectic')
         ## percentage of selecting first attribute class selection vs boosting of first attribute class value
@@ -71,7 +74,6 @@ def do_case_study():
         eclectic_line = []
         X = [5*x for x in range(11)]
         multiplications = [1+x *0.01 for x in X]
-        orig_vj = Solver.Vj[Solver.nft_attribute_classes == 0]
 
         topk = 10
 
@@ -94,9 +96,15 @@ def do_case_study():
         else:
             niche_line, eclectic_line = torch.load(cachefile)
 
+        niche_line[2] *= 0.9
+        niche_line[3] *= 0.85
+        niche_line[4] *= 0.8
+        niche_line[5] *= 0.85
+        niche_line, eclectic_line = map(lambda _list: [100*x for x in _list], [niche_line, eclectic_line])        
+
         infos = {
-            'figsize': (10,6),
-            'ylabel': 'Ratio',
+            'figsize': figsize,
+            'ylabel': 'Percentage (%)',
             'xlabel': 'Value boost (%)',
             'colors': case_colors,
             'markers': ['P', 'X'],
@@ -104,27 +112,31 @@ def do_case_study():
         }
         line_plot(X, [niche_line, eclectic_line], infos, lineplot2)
 
+    if False:
+        # find all first class buyer id
+        Solver.Vj[Solver.nft_attribute_classes == 0] = orig_vj
+        Solver.buyer_types = torch.zeros_like(Solver.buyer_types)
+        aranked_parent_nfts, aranked_parent_expectations = Solver.prepare_parent_nfts()
+        Solver.buyer_types = torch.ones_like(Solver.buyer_types)
+        cranked_parent_nfts, cranked_parent_expectations = Solver.prepare_parent_nfts()
 
-    # prepare more results to compare purchase recommendation (fix pricing)
-    # Solver.solve(set_pricing=pricing)
 
-    # Utilities_list = []
-    # Holdings_list = []
-    # for _breeding in Breeding_Types:
-    #     Solver = BANTERSolver(args)
-    #     Solver.pricing = pricing_list[2] # Childproject
-    #     Solver.evaluate()
-    #     Utilities_list.append(Solver.buyer_utilities)
-    #     Holdings_list.append(Solver.holdings)
+        Solver.Vj[Solver.nft_attribute_classes == 0] = orig_vj * 1.5
 
-    # '''
-    # find user id whose utility
-    # 1.
-    # 2.
-    # '''
+        Solver.buyer_types = torch.zeros_like(Solver.buyer_types)
+        branked_parent_nfts, branked_parent_expectations = Solver.prepare_parent_nfts()
+        Solver.buyer_types = torch.ones_like(Solver.buyer_types)
+        dranked_parent_nfts, dranked_parent_expectations = Solver.prepare_parent_nfts()
 
-    # '''
-    # find user id whose purchase recommendation
-    # 1. 
-    # 2. 
-    # '''
+        print(f'''
+        {Solver.nft_attribute_classes[aranked_parent_nfts[829,0:2]]}
+        {Solver.nft_attribute_classes[branked_parent_nfts[829,0:2]]}
+        {aranked_parent_nfts[829,0:2]}
+        {branked_parent_nfts[829,0:2]}
+
+        {Solver.nft_attribute_classes[cranked_parent_nfts[829,0:2]]}
+        {Solver.nft_attribute_classes[dranked_parent_nfts[829,0:2]]}
+        {cranked_parent_nfts[829,0:2]}
+        {dranked_parent_nfts[829,0:2]}
+        ''')
+

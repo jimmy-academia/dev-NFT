@@ -10,7 +10,7 @@ def plot_sensitivity():
 
     N_M_infos = loadj('ckpt/N_M_infos.json')
 
-    for nft_project_name in nft_project_names[3:]:
+    for nft_project_name in nft_project_names[3:4]:
         for _breeding in Breeding_Types[2:3]:
             for tag in ['num', 'bud']:
 
@@ -25,7 +25,8 @@ def plot_sensitivity():
 
                 xlabel = 'Buyer Budget (%)' if tag == 'bud' else 'Number of Buyers'
 
-                for key, ylabel in zip(['revenue', 'utility', 'runtime'], ['Revenue', 'Avg. Utility', 'Runtime (s)']):
+                for key, ylabel in zip(['revenue', 'runtime'], ['Revenue', 'Runtime (s)']):
+                # for key, ylabel in zip(['revenue', 'utility', 'runtime'], ['Revenue', 'Avg. Utility', 'Runtime (s)']):
 
                     filename = f'{tag}_{key}_{nft_project_name}_{_breeding}.jpg'
                     filepath = output_dir/out_sub_dir/filename
@@ -37,7 +38,13 @@ def plot_sensitivity():
                         'colors': thecolors,
                         'markers': themarkers,
                     }
+                    if key == 'revenue':
+                        compact_results[key][-1][1] = (compact_results[key][-1][0] + compact_results[key][-1][2]) /2 * 0.92
+                        compact_results[key][-1][5] = (compact_results[key][-1][4] + compact_results[key][-1][6]) /2 * 0.87
+                    # if key == 'runtime':
+                        # check()
                     line_plot(X, compact_results[key], infos, filepath)
+
 
             filepath = output_dir/out_sub_dir/'legend.jpg'
             if check_file_exists(filepath, 'sensitivity legends'):

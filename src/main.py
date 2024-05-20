@@ -13,9 +13,9 @@ def main():
     Run all (unfinished) experiments
     """
     exp_list = [run_experiments, run_sensitivity_tests, run_ablation_tests, run_module_tests, run_schedule_tests, adjust_pruning_tests, run_scalability_tests, do_case_study]
-    choices = ['main', 'sensitivity', 'ablation', 'module', 'schedule', 'prunning', 'scalability', 'case']
+    choices = ['main', 'sensitivity', 'ablation', 'module', 'schedule', 'prunning', 'scale', 'case']
     parser = argparse.ArgumentParser(description='Visualize NFT data')
-    parser.add_argument('-c', choices=choices+['all'], default='scalability')
+    parser.add_argument('-c', choices=choices+['all'], default='scale')
     args = parser.parse_args()
     
     prepare_nft_data() # prepares nft data into files 

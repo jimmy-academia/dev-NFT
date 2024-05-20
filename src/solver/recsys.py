@@ -13,8 +13,13 @@ class HetRecSysSolver(HeuristicsSolver):
         args.embed_dim = 16
         args.percent = 0.6
         args.reg = 1
+
+        if not args.large:
+            self.do_preparations()
+
+    def do_preparations(self):
         self.prepare_Nums_Lists_Data()
-        self.model = GraphConsis(args, self.Nums, self.Lists)
+        self.model = GraphConsis(self.args, self.Nums, self.Lists)
         self.model.to(self.args.device)
 
     def prepare_Nums_Lists_Data(self):

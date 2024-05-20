@@ -16,9 +16,9 @@ def line_plot(X, project_values, infos, filepath):
     plt.ylabel(infos['ylabel'])
     plt.xlabel(infos['xlabel'])
     for values, color, marker in zip(project_values, infos['colors'], infos['markers']):
-        plt.plot(X, values, color=color, marker=marker, markersize=10, linewidth=3.5)
+        plt.plot(X[:len(values)], values, color=color, marker=marker, markersize=18, linewidth=3.5)
     if 'legends' in infos:
-        plt.legend(infos['legends'], loc='upper left', fontsize=24)
+        plt.legend(infos['legends'], loc='upper left', fontsize=30, markerscale=1.8)
     if 'no_xtic' in infos and infos['no_xtic']:
         plt.xticks([])
     plt.tight_layout()
@@ -100,6 +100,6 @@ def make_legend(legends, filepath, tag, colors, patterns=None, markers=None):
     fig_legend = plt.figure(figsize=(legend_fig_width, 1), dpi=300)  # High DPI for quality
     ax_legend = fig_legend.add_subplot(111)
     ax_legend.axis('off')
-    ax_legend.legend(handles, labels, loc='center', ncol=len(legends), frameon=False, fontsize=50, handlelength=0.8, handletextpad=0.2, columnspacing=0.75)
+    ax_legend.legend(handles, labels, loc='center', ncol=len(legends), frameon=False, fontsize=50, handlelength=0.8, handletextpad=0.2, columnspacing=0.75, markerscale=1.2)
     fig_legend.savefig(filepath, bbox_inches='tight')
     plt.close(fig_legend)

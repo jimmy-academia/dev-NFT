@@ -10,13 +10,14 @@ from printers.main_exp_barplots import plot_main_exp
 from printers.sensitivity_plots import plot_sensitivity
 from printers.ablation_barplots import plot_ablation
 from printers.prunning_plots import plot_prunning
+from printers.plot_scale import plot_scalability
 
 def main():
     """
     Run all visualizations
     """
     parser = argparse.ArgumentParser(description='Visualize NFT data')
-    parser.add_argument('-c', choices=['stats', 'main', 'sensitivity', 'ablation', 'prunning' 'all'], default='stats')
+    parser.add_argument('-c', choices=['stats', 'main', 'sensitivity', 'ablation', 'prunning', 'scale', 'all'], default='scale')
     args = parser.parse_args()
     if args.c == 'stats':
         print_nft_data_stats()
@@ -28,6 +29,8 @@ def main():
         plot_ablation()
     elif args.c == 'prunning':
         plot_prunning()
+    elif args.c == 'scale':
+        plot_scalability()
     elif args.c == 'all':
         print_nft_data_stats()
         plot_main_exp()

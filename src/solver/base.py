@@ -43,7 +43,7 @@ class BaseSolver:
         if self.breeding_type != 'None':
             cache_parents_path = cache_dir / f'parents_{args.breeding_type}_{args.num_child_sample}_{args.mutation_rate}_mod{args.module_id}.pth'
             if cache_parents_path.exists():
-                print('loading from...', cache_parents_path)
+                # print('loading from...', cache_parents_path)
                 self.ranked_parent_nfts, self.ranked_parent_expectations = torch_cleanload(cache_parents_path, self.args.device)
             else:
                 print('saving to...', cache_parents_path)
@@ -126,12 +126,12 @@ class BaseSolver:
             unique_labels = labels_vector.unique(sorted=True)
             indices_list = [(labels_vector == label).nonzero(as_tuple=True)[0] for label in unique_labels]
             rank_list = [torch.arange(len(indices)) for indices in indices_list]
-            parent_sets = torch.cartesian_prod(*indices_list)
+            parent_sets = candidates[torch.cartesian_prod(*indices_list)]
             combined_ranks = torch.cartesian_prod(*rank_list).sum(-1)
-            parent_sets = parent_sets[combined_ranks.argsort()]
+            parent_sets = parent_sets.gather(0, combined_ranks.unsqueeze(1).expand(-1, parent_sets.size(1)).to(self.args.device))
             combos.append(parent_sets)
-            min_len = min(len(combo) for combo in combos)        
-            combos = [combo[:min_len] for combo in combos]
+        min_len = min(len(combo) for combo in combos)        
+        combos = [combo[:min_len] for combo in combos]
         combos = torch.stack(combos)
         return combos
 
@@ -162,7 +162,7 @@ class BaseSolver:
                 niche_buyer_ids, eclectic_buyer_ids = [torch.where(self.buyer_types==i)[0] for i in range(2)]
                 # niche
                 ## count number of same attribute class
-                niche_sets = parent_nft_sets[niche_buyer_ids]
+                niche_sets = parent_nft_sets[niche_buyer_ids]  ## niche_buyers x list of sets
                 labeled_sets = self.nft_attribute_classes[niche_sets]
                 majority_label = labeled_sets.mode(dim=-1)[0].unsqueeze(-1).expand_as(labeled_sets)
                 same_class_count = (labeled_sets == majority_label).sum(-1)
@@ -267,13 +267,19 @@ class BaseSolver:
 
         epsilon = 1e-6
         self.pricing.clamp_(min=0)
+
         self.holdings = self.solve_user_demand()
         # pricing_demand = self.solve_user_demand()
         # self.holdings = torch.where(self.holdings > pricing_demand, pricing_demand, self.holdings)
+
         self.holdings.clamp_(min=0)
+
         self.holdings *= torch.clamp(self.nft_counts / (self.holdings.sum(0)+epsilon), max=1) ## fit item constraints
-        self.holdings *= torch.clamp(self.buyer_budgets / ((self.holdings * self.pricing).sum(1)+epsilon), max=1).view(-1, 1) ## fit budget constraints
-        
+        for user_index in make_batch_indexes(self.nftP.N, 1000):
+            self.holdings[user_index] *= torch.clamp(self.buyer_budgets[user_index] / ((self.holdings[user_index] * self.pricing).sum(1)+epsilon), max=1).view(-1, 1) ## fit budget constraints
+        # self.holdings *= torch.clamp(self.buyer_budgets / ((self.holdings * self.pricing).sum(1)+epsilon), max=1).view(-1, 1) ## fit budget constraints
+            
+
         self.buyer_utilities = []
         for batch_users in make_batch_indexes(self.nftP.N, 100):
             self.buyer_utilities.append(self.calculate_buyer_utilities(
@@ -283,9 +289,12 @@ class BaseSolver:
                 self.pricing,   
                 True,
             ))
+
         self.buyer_utilities = torch.cat(self.buyer_utilities, dim=0)
         # seller revenue
-        self.seller_revenue = (self.pricing * self.holdings).sum()
+        self.seller_revenue = 0
+        for user_index in make_batch_indexes(self.nftP.N, 1000):
+            self.seller_revenue += (self.pricing * self.holdings[user_index]).sum()
 
     def calculate_buyer_utilities(self, user_index, holdings, budgets, pricing, split=False):
         '''
@@ -295,16 +304,19 @@ class BaseSolver:
         U^i_{Breeding} = sum_k topk expectation value * multistep(x^i[p], Q[p]) * multistep(x^i[q], Q[q])
         R = budgets - sum_j price_j * holdings_j
         '''
-        U_item = (holdings * (self.Vj)).sum(1)/2
+        U_item = (holdings * (self.Vj.to(self.args.device))).sum(1)/2
+
+
         # sub_batch operation
         chunk_size = 32 
         subtotals = []
         for sub_batch in make_batch_indexes(len(holdings), chunk_size):
             subtotals.append((holdings[sub_batch].unsqueeze(2) * self.nft_attributes).sum(1))
         subtotals = torch.cat(subtotals, dim=0) + 1
-        U_coll = (torch.log(subtotals) * self.buyer_preferences[user_index]).sum(1)*50
 
+        U_coll = (torch.log(subtotals) * self.buyer_preferences[user_index]).sum(1)*50
         R = budgets - (holdings * pricing).sum(1)
+
 
         U_breeding = torch.zeros_like(U_item)
         if self.breeding_type != 'None':
@@ -314,6 +326,7 @@ class BaseSolver:
             # (sum(U_item).detach()/(sum(U_breeding).detach()+1e-5))
 
         self.ratio = U_item.detach().sum()/U_breeding.detach().sum()
+
         if not split:
             return U_item + U_coll + U_breeding + R
         else:
@@ -364,36 +377,52 @@ class BaseSolver:
                 
     def solve_user_demand(self, set_user_index=None):
 
+        div = 1
         if set_user_index is not None:
             batch_user_iterator = [set_user_index]
         else:
             batch_user_iterator = self.buyer_budgets.argsort(descending=True).tolist()
-            batch_user_iterator = make_batch_indexes(batch_user_iterator, self.nftP.N//20)
+            div = 20 if self.nftP.N < 9000 else self.nftP.N // 500
+            batch_user_iterator = make_batch_indexes(batch_user_iterator, self.nftP.N//div)
 
-        spending = torch.rand(self.nftP.N, self.nftP.M+1).to(self.args.device) # N x M+1 additional column for remaining budget
+        if self.args.large:
+            spending = torch.rand(self.nftP.N, self.nftP.M+1)
+        else:
+            spending = torch.rand(self.nftP.N, self.nftP.M+1).to(self.args.device) # N x M+1 additional column for remaining budget
+        
         spending /= spending.sum(1).unsqueeze(1)
 
         pbar = tqdm(range(16), ncols=88, desc='Solving user demand!', leave=False)
         
+        
+
         user_eps = 1e-4
         for __ in pbar:
             buyer_utility = 0
-            for user_index in batch_user_iterator:
+            for user_index in tqdm(batch_user_iterator, ncols=88, leave=False, total=div+1):
                 spending_var = spending[user_index]
+                if self.args.large:
+                    spending_var = spending_var.to(self.args.device)
                 spending_var.requires_grad = True
+                
                 batch_budget = self.buyer_budgets[user_index]
                 holdings = self.hatrelu(spending_var[:, :-1]*batch_budget.unsqueeze(1)/self.pricing.unsqueeze(0))
                 _utility = self.calculate_buyer_utilities(user_index, holdings, batch_budget, self.pricing)
                 _utility.backward(torch.ones_like(_utility))
 
                 buyer_utility += _utility.detach().mean().item()
-                spending[user_index] += user_eps* spending_var.grad
+                _grad = spending_var.grad.cpu() if self.args.large else spending_var.grad
+                spending[user_index] += user_eps* _grad
                 spending = torch.where(spending < 0, 0, spending)
                 spending /= spending.sum(1).unsqueeze(1)
             
             pbar.set_postfix(delta= float(spending[:, -1].sum() - spending[:, -1].sum()))
 
-        demand = self.hatrelu(spending[:, :-1]*self.buyer_budgets.unsqueeze(1)/self.pricing.unsqueeze(0))
+        if self.args.large:
+            demand = self.hatrelu(spending[:, :-1]*self.buyer_budgets.unsqueeze(1).cpu()/self.pricing.unsqueeze(0).cpu())
+            demand = demand.to(self.args.device)
+        else:
+            demand = self.hatrelu(spending[:, :-1]*self.buyer_budgets.unsqueeze(1)/self.pricing.unsqueeze(0))
         return demand
 
     def hatrelu(self, x, threshold=1):

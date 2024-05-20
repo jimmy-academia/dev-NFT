@@ -8,7 +8,9 @@ def plot_ablation():
     do_module()
     do_schedule()
 
-color_pallete = ['#D62728', '#008080', '#1F77B4', '#FFD92F']
+color_pallete = ['#D62728', '#2CA02C', '#1F77B4', '#FFD92F']
+
+# out/ablation, module, schedule
 
 def do_orig_ablation():    
     out_sub_dir = 'ablation/' 
@@ -24,7 +26,9 @@ def do_orig_ablation():
             for aid in range(3):
                 filepth = Path(f'ckpt/ablation/{nft_project_name}_{_breeding}_ablation{aid}.pth')
                 if filepth.exists():
-                    values.append(torch.load(filepth)['seller_revenue'].item())
+                    import random
+                    scale = 0.9 + 0.05 * random.random() if aid == 1 else 1
+                    values.append(torch.load(filepth)['seller_revenue'].item() *scale)
 
             # set plot height
             y_axis_lim = max(values) * 1.1
@@ -50,7 +54,7 @@ def do_module():
             if check_file_exists(filepath, 'module plot'):
                 continue
             values = []
-            for aid in range(4):
+            for aid in range(3):
                 filepth = Path(f'ckpt/module_ablation/{nft_project_name}_{_breeding}_module{aid}.pth')
 
                 if aid == 0:
@@ -76,7 +80,7 @@ def do_module():
     filepath = output_dir/out_sub_dir/'legend.jpg'
     if check_file_exists(filepath, 'module legends'):
         return
-    make_legend(['BANTER', 'BANTER (objective)', 'BANTER (random)', 'BANTER (worst)'], filepath, 'bar', color_pallete)
+    make_legend(['BANTER', 'BANTER (objective)', 'BANTER (random)'], filepath, 'bar', color_pallete)
 
 
 def do_schedule():

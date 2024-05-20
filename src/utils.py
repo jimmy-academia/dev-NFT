@@ -45,6 +45,7 @@ def default_args():
     args.num_attr_class = 4
     args.decay = 0.9
     args.ablation_id = 0
+    args.large = False
 
     args.schedule_id = 0 # 0: dynamic, 1: fix weight 2: none
     args.module_id = 0 # 0: f_pop *TildeV (homo)/TildeV+attrclass (heter) 1:TildeV 2:rand
