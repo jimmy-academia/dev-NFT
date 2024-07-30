@@ -4,6 +4,7 @@ from utils import dumpj, check
 from pathlib import Path
 import json
 from collections import defaultdict
+from tqdm import tqdm
 
 '''
 format the yelp data into a dictionary with keys:
@@ -31,9 +32,9 @@ item_counts = []
 business_id = []
 
 with open(datadir/yelp_filename.format('business')) as file:
-    for line in file:
+    for line in tqdm(file, ncols=90, desc='Processing Business Data'):
         bdict = json.loads(line)
-        if bdict['review_count'] < 10:
+        if bdict['review_count'] < 10 or bdict['categories'] is None:
             continue
         if bdict['state'] not in trait_system['State']:
             trait_system['State'].append(bdict['state'])
@@ -49,18 +50,27 @@ with open(datadir/yelp_filename.format('business')) as file:
         item_counts.append(bdict['review_count'])
         business_id.append(bdict['business_id'])
 
-buyer_assets_ids = defaultdict(set)
+review_edge = defaultdict(set)
+edge_count = 0
 
-with open(datadir/yelp_filename.format('business')) as file:
-    for line in file:
+with open(datadir/yelp_filename.format('review')) as file:
+    for line in tqdm(file, ncols=90, desc='Processing Review Data'):
         rdict = json.loads(line)
         if rdict['business_id'] not in business_id:
             continue
         if rdict['stars'] >= 3:
-            buyer_assets_ids[rdict['user_id']].add(business_id.index(rdict['business_id']))
+            review_edge[rdict['user_id']].add(business_id.index(rdict['business_id']))
+            edge_count += 1
 
-buyer_assets_ids = [list(v) for v in buyer_assets_ids.values()]
+        if edge_count % 10000 == 0:
+            print(edge_count)
+        if edge_count > 100000:
+            break
 
+buyer_assets_ids = [list(v) for v in review_edge.values()]
+min_len = min(len(v) for v in buyer_assets_ids)
+max_len = max(len(v) for v in buyer_assets_ids)
+buyer_budgets = [10 + (len(v) - min_len) * 90 / (max_len - min_len) for v in buyer_assets_ids]
 
 yelp_nft_data = {
     'trait_system': trait_system,
