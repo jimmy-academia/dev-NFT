@@ -22,7 +22,8 @@ dumpj(yelp_nft_data, datadir/'yelp_nft_data.json')
 '''
 trait_system = {
     "State": ["AZ", "CA", "PA", "ID", "MN", "NY", "TX"],
-    "Category": ["Restaurants", "Shopping", "Health", "Automotive", "Bookstores", "Pet", "Hotels", "Museums", "Gyms", "Grocery"],
+    "Category": ["Restaurants", "Shopping", "Health", "Hotels", "Museums", "Gyms", "Grocery"],
+    # "Category": ["Restaurants", "Shopping", "Health", "Automotive", "Bookstores", "Pet", "Hotels", "Museums", "Gyms", "Grocery"],
 }
 
 yelp_filename = 'yelp_academic_dataset_{}.json'
@@ -34,7 +35,7 @@ business_id = []
 
 with open(datadir/yelp_filename.format('business')) as file:
     for line in tqdm(file, ncols=90, desc='Processing Business Data'):
-        if random.random() > 0.4:
+        if random.random() > 0.25:
             continue
         bdict = json.loads(line)
         if bdict['review_count'] < 10 or bdict['categories'] is None:
@@ -66,7 +67,6 @@ with open(datadir/yelp_filename.format('review')) as file:
 
         if edge_count % 10000 == 0:
             print(len(review_edge))
-        # if len(review_edge) > 200000:
         if edge_count > 12000:
             break
 
@@ -84,5 +84,4 @@ yelp_nft_data = {
 }
 
 print(len(asset_traits), len(buyer_budgets), len(buyer_assets_ids))
-
 dumpj(yelp_nft_data, 'yelp.json')
