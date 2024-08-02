@@ -38,7 +38,7 @@ def default_args():
     args = SimpleNamespace()
     args.ckpt_dir = Path('ckpt')
     args.ckpt_dir.mkdir(parents=True, exist_ok=True)
-    args.device = torch.device("cuda:1")
+    args.device = torch.device("cuda:0")
     args.breeding_topk = 10
     args.cand_lim = 50
     args.num_child_sample = 100
