@@ -5,6 +5,7 @@ from pathlib import Path
 import json
 from collections import defaultdict
 from tqdm import tqdm
+import random
 
 '''
 format the yelp data into a dictionary with keys:
@@ -20,7 +21,7 @@ dumpj(yelp_nft_data, datadir/'yelp_nft_data.json')
  
 '''
 trait_system = {
-    "State": [],
+    "State": ["AZ", "CA", "PA", "ID", "MN", "NY", "TX"],
     "Category": ["Restaurants", "Shopping", "Health", "Automotive", "Bookstores", "Pet", "Hotels", "Museums", "Gyms", "Grocery"],
 }
 
@@ -33,12 +34,13 @@ business_id = []
 
 with open(datadir/yelp_filename.format('business')) as file:
     for line in tqdm(file, ncols=90, desc='Processing Business Data'):
+        if random.random() > 0.4:
+            continue
         bdict = json.loads(line)
         if bdict['review_count'] < 10 or bdict['categories'] is None:
             continue
         if bdict['state'] not in trait_system['State']:
-            trait_system['State'].append(bdict['state'])
-
+            continue
         asset_cat = None
         for category in trait_system['Category']:
             if category in bdict['categories']:
@@ -63,8 +65,9 @@ with open(datadir/yelp_filename.format('review')) as file:
             edge_count += 1
 
         if edge_count % 10000 == 0:
-            print(edge_count)
-        if edge_count > 100000:
+            print(len(review_edge))
+        # if len(review_edge) > 200000:
+        if edge_count > 12000:
             break
 
 buyer_assets_ids = [list(v) for v in review_edge.values()]
@@ -80,4 +83,6 @@ yelp_nft_data = {
     'buyer_assets_ids': buyer_assets_ids,
 }
 
-dumpj(yelp_nft_data, datadir/'yelp_nft_data.json')
+print(len(asset_traits), len(buyer_budgets), len(buyer_assets_ids))
+
+dumpj(yelp_nft_data, 'yelp.json')

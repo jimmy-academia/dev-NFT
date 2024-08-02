@@ -13,7 +13,9 @@ import torch
 import code 
 import inspect
 
-NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat Ape Club', 'Roaring Leader']
+NFT_Projects = ['Yelp']
+
+# NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat Ape Club', 'Roaring Leader']
 # NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat Ape Club', 'Heterosis', 'Roaring Leader', 'StepN']
 nft_project_names = [''.join(Project_Name.split()).lower() for Project_Name in NFT_Projects]
 min_purchase = [6, 2, 2, 2, 1, 2, 1]
@@ -36,7 +38,7 @@ def default_args():
     args = SimpleNamespace()
     args.ckpt_dir = Path('ckpt')
     args.ckpt_dir.mkdir(parents=True, exist_ok=True)
-    args.device = torch.device("cuda:0")
+    args.device = torch.device("cuda:1")
     args.breeding_topk = 10
     args.cand_lim = 50
     args.num_child_sample = 100

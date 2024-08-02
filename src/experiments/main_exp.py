@@ -28,7 +28,11 @@ def run_experiments():
                 dd = 3 if _method == 'BANTER' else 2
                 if result_file.exists():
                     print(f'|> {result_file} exists <|')
-                    print(f'seller_revenue {torch.load(result_file)['seller_revenue'].item()} buyer_utilities {torch.load(result_file)['buyer_utilities'][:, :dd].sum(1).mean().item()}')
+                    data = torch.load(result_file)
+                    seller_revenue = data['seller_revenue'].item()
+                    buyer_utilities = data['buyer_utilities'][:, :dd].sum(1).mean().item()
+                    print(f"seller_revenue {seller_revenue} buyer_utilities {buyer_utilities}")
+                    # print(f'seller_revenue {torch.load(result_file)['seller_revenue'].item()} buyer_utilities {torch.load(result_file)['buyer_utilities'][:, :dd].sum(1).mean().item()}')
                 else:
                     print(f'running [{nft_project_name}, {_method}, {_breeding}] experiment...')
                     args.breeding_type = _breeding
