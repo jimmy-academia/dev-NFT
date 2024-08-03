@@ -30,6 +30,7 @@ class BaseSolver:
         self.alpha = None
         self.Vj = self.calc_objective_valuations(self.nft_attributes)
         self.Uij = torch.matmul(self.buyer_preferences, self.nft_attributes.T.float())
+
         if self.breeding_type == 'Heterogeneous':
             cache_heter_labels_path = cache_dir / f'heter_files_{args.num_trait_div}_{args.num_attr_class}_{self.nftP.N}_{self.nftP.M}.pth'
             if cache_heter_labels_path.exists():
@@ -39,7 +40,6 @@ class BaseSolver:
                 self.nft_attribute_classes =  torch.randint(args.num_attr_class, (self.nftP.M,)).to(self.args.device)
                 self.buyer_types = torch.randint(2, (self.nftP.N,)).to(self.args.device)
                 torch_cleansave((self.nft_trait_divisions, self.nft_attribute_classes, self.buyer_types), cache_heter_labels_path)
-
         if self.breeding_type != 'None':
             cache_parents_path = cache_dir / f'parents_{args.breeding_type}_{args.num_child_sample}_{args.mutation_rate}_mod{args.module_id}.pth'
             if cache_parents_path.exists():
@@ -79,6 +79,7 @@ class BaseSolver:
         buyer_preferences, buyer_preferences_mask = self.tensorize(self.nftP.user_preferences, True)
         buyer_preferences = buyer_preferences.masked_fill(buyer_preferences_mask, float('-inf'))
         self.buyer_preferences = torch.softmax(buyer_preferences, dim=1)
+
         self.preference_mask = ~buyer_preferences_mask[0]
         self.nft_trait_counts = torch.where(self.preference_mask * (self.nft_trait_counts==0), 1, self.nft_trait_counts)
         assert (self.preference_mask * (self.nft_trait_counts==0)).sum() == 0
@@ -153,7 +154,6 @@ class BaseSolver:
             elif self.args.module_id == 3:
                 parent_nft_candidate = (self.Uij * self.Vj).topk(self.args.cand_lim, largest=False)[1]
 
-            
             parent_nft_sets = self.batch_assembling(self.nft_trait_divisions, parent_nft_candidate)
             breeding_expectation_values = (self.Uij * self.Vj).unsqueeze(1).expand(-1, parent_nft_sets.size(1), -1).gather(2, parent_nft_sets).sum(-1)
 
@@ -164,6 +164,7 @@ class BaseSolver:
                 ## count number of same attribute class
                 niche_sets = parent_nft_sets[niche_buyer_ids]  ## niche_buyers x list of sets
                 labeled_sets = self.nft_attribute_classes[niche_sets]
+
                 majority_label = labeled_sets.mode(dim=-1)[0].unsqueeze(-1).expand_as(labeled_sets)
                 same_class_count = (labeled_sets == majority_label).sum(-1)
                 del majority_label

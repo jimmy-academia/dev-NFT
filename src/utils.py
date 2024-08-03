@@ -18,7 +18,8 @@ NFT_Projects = ['Yelp']
 # NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat Ape Club', 'Roaring Leader']
 # NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat Ape Club', 'Heterosis', 'Roaring Leader', 'StepN']
 nft_project_names = [''.join(Project_Name.split()).lower() for Project_Name in NFT_Projects]
-min_purchase = [6, 2, 2, 2, 1, 2, 1]
+# min_purchase = [6, 2, 2, 2, 1, 2, 1]
+min_purchase = [0]
 
 Baseline_Methods = ['Random', 'Popular', 'Auction', 'Group',  'HetRecSys', 'BANTER']
 New_Baseline_Methods = ['Random', 'Popular', 'BANTER', 'Auction', 'Group',  'HetRecSys']
@@ -43,8 +44,8 @@ def default_args():
     args.cand_lim = 50
     args.num_child_sample = 100
     args.mutation_rate = 0.1
-    args.num_trait_div = 4
-    args.num_attr_class = 4
+    args.num_trait_div = 2
+    args.num_attr_class = 2
     args.decay = 0.9
     args.ablation_id = 0
     args.large = False

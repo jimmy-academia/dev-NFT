@@ -21,9 +21,10 @@ dumpj(yelp_nft_data, datadir/'yelp_nft_data.json')
  
 '''
 trait_system = {
-    "State": ["AZ", "CA", "PA", "ID", "MN", "NY", "TX"],
-    "Category": ["Restaurants", "Shopping", "Health", "Hotels", "Museums", "Gyms", "Grocery"],
-    # "Category": ["Restaurants", "Shopping", "Health", "Automotive", "Bookstores", "Pet", "Hotels", "Museums", "Gyms", "Grocery"],
+    "State": ["AZ", "CA", "PA", "ID", "MN", "NY", "TX", "Other"],
+    "State2": ["AL", "KY", "OH", "OK", "CO", "MS", "CT", "Other"],
+    "Category": ["Restaurants", "Shopping", "Health", "Hotels", "Grocery", "Other"],
+    "Category2": ["Automotive", "Bookstores", "Pet", "Museums", "Gyms", "Other"],
 }
 
 yelp_filename = 'yelp_academic_dataset_{}.json'
@@ -35,21 +36,37 @@ business_id = []
 
 with open(datadir/yelp_filename.format('business')) as file:
     for line in tqdm(file, ncols=90, desc='Processing Business Data'):
-        if random.random() > 0.25:
+        if random.random() > 0.4:
             continue
         bdict = json.loads(line)
         if bdict['review_count'] < 10 or bdict['categories'] is None:
             continue
-        if bdict['state'] not in trait_system['State']:
+        if bdict['state'] not in trait_system['State'] and bdict['state'] not in trait_system['State2']:
             continue
+        elif bdict['state'] in trait_system['State']:
+            states = [bdict['state'], 'Other']
+        else:
+            states = ['Other', bdict['state']]
+        
         asset_cat = None
         for category in trait_system['Category']:
             if category in bdict['categories']:
                 asset_cat = category
                 break
+
+        if asset_cat is None:
+            for category in trait_system['Category2']:
+                if category in bdict['categories']:
+                    asset_cat = category
+                    break
         if asset_cat is None:
             continue
-        asset_traits.append([bdict['state'], asset_cat])
+        elif asset_cat in trait_system['Category']:
+            assets = [asset_cat, 'Other']
+        else:
+            assets = ['Other', asset_cat]
+
+        asset_traits.append([states[0], states[1], assets[0], assets[1]])
         item_counts.append(bdict['review_count'])
         business_id.append(bdict['business_id'])
 
@@ -67,10 +84,16 @@ with open(datadir/yelp_filename.format('review')) as file:
 
         if edge_count % 10000 == 0:
             print(len(review_edge))
-        if edge_count > 12000:
+        if edge_count > 15000:
             break
 
 buyer_assets_ids = [list(v) for v in review_edge.values()]
+
+for bid in range(len(asset_traits)):
+    u = random.randint(0, len(buyer_assets_ids)-1)
+    if bid not in buyer_assets_ids[u]:
+        buyer_assets_ids[u].append(bid)
+
 min_len = min(len(v) for v in buyer_assets_ids)
 max_len = max(len(v) for v in buyer_assets_ids)
 buyer_budgets = [10 + (len(v) - min_len) * 90 / (max_len - min_len) for v in buyer_assets_ids]
@@ -84,4 +107,4 @@ yelp_nft_data = {
 }
 
 print(len(asset_traits), len(buyer_budgets), len(buyer_assets_ids))
-dumpj(yelp_nft_data, 'yelp.json')
+dumpj(yelp_nft_data, '../NFT_data/clean/yelp.json')

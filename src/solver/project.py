@@ -43,7 +43,7 @@ class NFTProject:
         aid_set = [aid_set[i%len(aid_set)] for i in range(self.M)]
 
         self.item_attributes = self.trait2label_vec([asset_traits[i] for i in aid_set])
-        self.user_preferences = [alluser_prefs[i%len(alluser_prefs)] for i in range(self.M)]
+        self.user_preferences = [alluser_prefs[i%len(alluser_prefs)] for i in range(self.N)]
         self.user_budgets = [buyer_budgets[bi% len(buyer_budgets)] for bi in bid_list]
         self.item_counts = [item_counts[i% len(item_counts)] for i in aid_set]
         self.num_trades = num_trades

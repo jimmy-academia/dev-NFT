@@ -23,6 +23,7 @@ class HeuristicsSolver(BaseSolver):
         self.pricing = torch.zeros(self.nftP.M)
 
         for batch_users in make_batch_indexes(self.nftP.N, batch_size):
+            batch_size = len(batch_users)
             holdings = torch.zeros(batch_size, self.nftP.M)
             holdings[torch.arange(batch_size)[:, None], _assignments[batch_users]] = 1
             buyer_spendings = holdings * budget_per_item[batch_users].unsqueeze(1)
