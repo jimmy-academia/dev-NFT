@@ -13,10 +13,10 @@ import torch
 import code 
 import inspect
 
-NFT_Projects = ['Yelp']
+# NFT_Projects = ['Yelp']
 
-# NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat Ape Club', 'Roaring Leader']
-# NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat Ape Club', 'Heterosis', 'Roaring Leader', 'StepN']
+NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat Ape Club', 'Roaring Leader'] #'StepN'
+
 nft_project_names = [''.join(Project_Name.split()).lower() for Project_Name in NFT_Projects]
 # min_purchase = [6, 2, 2, 2, 1, 2, 1]
 min_purchase = [0]

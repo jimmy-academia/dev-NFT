@@ -4,7 +4,7 @@ from printers.central_plotter import line_plot
 
 def do_case_study():
     case_colors = ['#D62728', '#1770af']
-    figsize = (10,7)
+    figsize = (12,6)
     # prepare comparison files
     args = default_args()
     args.setN = None

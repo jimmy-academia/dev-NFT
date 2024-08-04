@@ -8,7 +8,7 @@ import argparse
 from printers.stats import print_nft_data_stats
 from printers.main_exp_barplots import plot_main_exp
 from printers.sensitivity_plots import plot_sensitivity
-from printers.ablation_barplots import plot_ablation
+from printers.new_ablation_barplots import plot_ablation
 from printers.prunning_plots import plot_prunning
 from printers.plot_scale import plot_scalability
 

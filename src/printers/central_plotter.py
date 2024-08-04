@@ -5,10 +5,14 @@ import matplotlib.font_manager as font_manager
 from matplotlib.lines import Line2D
 
 plt.rcParams["font.family"] = "Times New Roman"
-plt.rcParams["font.size"] = 50
 plt.rcParams["font.weight"] = "bold"
+plt.rcParams["font.size"] = 50
 plt.rcParams['xtick.labelsize'] = 40
 plt.rcParams['ytick.labelsize'] = 40
+# plt.rcParams["font.size"] = 40
+# plt.rcParams['xtick.labelsize'] = 20
+# plt.rcParams['ytick.labelsize'] = 20
+
 
 def line_plot(X, project_values, infos, filepath):
     figsize = infos['figsize'] if 'figsize' in infos else (12, 6)
@@ -38,7 +42,8 @@ def bar_plot(values, infos, filepath):
     plt.close()
 
 def rainbow_bar_plot(project_revenues, infos, filepath):
-    plt.figure(figsize=(13, 6), dpi=200)
+    # plt.figure(figsize=(13, 6), dpi=200)
+    plt.figure(figsize=(13, 4), dpi=200)
     plt.ylabel(infos['ylabel'])
     plt.ylim(infos['y_axis_min'], infos['y_axis_lim'])
 
