@@ -42,8 +42,8 @@ def bar_plot(values, infos, filepath):
     plt.close()
 
 def rainbow_bar_plot(project_revenues, infos, filepath):
-    # plt.figure(figsize=(13, 6), dpi=200)
-    plt.figure(figsize=(13, 4), dpi=200)
+    plt.figure(figsize=(13, 6), dpi=200)
+    # plt.figure(figsize=(13, 4), dpi=200)
     plt.ylabel(infos['ylabel'])
     plt.ylim(infos['y_axis_min'], infos['y_axis_lim'])
 

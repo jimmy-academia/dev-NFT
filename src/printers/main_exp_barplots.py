@@ -14,46 +14,50 @@ def plot_main_exp():
             if check_file_exists(filepath, f'main_exp {tag} plot'):
                 continue
 
-            project_values = []
-            # xticks = None
-            # xticks = ['Hetero-\ngeneous', 'Homo-\ngeneous', 'Child\nProject', 'No\nBreeding']
-            xticks = ['Heter', 'Homo', 'Child', 'None']
+            if Path(f'ckpt/temp/{tag}_temp.pth').exists():
+                project_values, infos = torch.load(f'ckpt/temp/{tag}_temp.pth')
+            else:
 
-            for _breeding in Breeding_Types:
-                breed_vals = []
-                for _method in Baseline_Methods:
-                    filepth = Path(f'ckpt/main_exp/{nft_project_name}_{_method}_{_breeding}.pth')
-                    if filepth.exists():
-                        if tag == 'revenue':
-                            breed_vals.append(torch.load(filepth)['seller_revenue'].item())
-                        elif tag == 'buyer_utility':
-                            if _method == 'BANTER':
-                                breed_vals.append(torch.load(filepth)['buyer_utilities'][:, :3].sum(1).mean().item())  ## average buyer utility
-                            else:
-                                breed_vals.append(torch.load(filepth)['buyer_utilities'][:, :2].sum(1).mean().item())  ## no breeding recommendation
-                        elif tag == 'runtime':
-                            breed_vals.append(torch.load(filepth)['runtime'])
-                            # xticks = ['Hetero-\ngeneous', 'Homo-\ngeneous', 'Child\nProject', 'No\nBreeding']
-                    else:
-                        breed_vals.append(0)
-                project_values.append(breed_vals)
+                project_values = []
+                # xticks = None
+                # xticks = ['Hetero-\ngeneous', 'Homo-\ngeneous', 'Child\nProject', 'No\nBreeding']
+                xticks = ['Heter', 'Homo', 'Child', 'None']
 
-            # set plot height
-            y_axis_lim = max([max(breed_vals) for breed_vals in project_values])
-            # _increase =  if tag == 'runtime' else 0.1
-            y_axis_lim = y_axis_lim + 0.1 * y_axis_lim
+                for _breeding in Breeding_Types:
+                    breed_vals = []
+                    for _method in Baseline_Methods:
+                        filepth = Path(f'ckpt/main_exp/{nft_project_name}_{_method}_{_breeding}.pth')
+                        if filepth.exists():
+                            if tag == 'revenue':
+                                breed_vals.append(torch.load(filepth)['seller_revenue'].item())
+                            elif tag == 'buyer_utility':
+                                if _method == 'BANTER':
+                                    breed_vals.append(torch.load(filepth)['buyer_utilities'][:, :3].sum(1).mean().item())  ## average buyer utility
+                                else:
+                                    breed_vals.append(torch.load(filepth)['buyer_utilities'][:, :2].sum(1).mean().item())  ## no breeding recommendation
+                            elif tag == 'runtime':
+                                breed_vals.append(torch.load(filepth)['runtime'])
+                                # xticks = ['Hetero-\ngeneous', 'Homo-\ngeneous', 'Child\nProject', 'No\nBreeding']
+                        else:
+                            breed_vals.append(0)
+                    project_values.append(breed_vals)
 
-            y_axis_min = min([min(breed_vals) for breed_vals in project_values]) if tag == 'runtime' else 0
-            y_axis_min = y_axis_min - 0.1 * y_axis_min
+                # set plot height
+                y_axis_lim = max([max(breed_vals) for breed_vals in project_values])
+                # _increase =  if tag == 'runtime' else 0.1
+                y_axis_lim = y_axis_lim + 0.1 * y_axis_lim
 
-            infos = {
-                'log': tag == 'runtime',
-                'ylabel': ylabel,
-                'y_axis_lim': y_axis_lim,
-                'y_axis_min': y_axis_min,
-                'colors': thecolors,
-                'xticks': xticks,
-            }
+                y_axis_min = min([min(breed_vals) for breed_vals in project_values]) if tag == 'runtime' else 0
+                y_axis_min = y_axis_min - 0.1 * y_axis_min
+
+                infos = {
+                    'log': tag == 'runtime',
+                    'ylabel': ylabel,
+                    'y_axis_lim': y_axis_lim,
+                    'y_axis_min': y_axis_min,
+                    'colors': thecolors,
+                    'xticks': xticks,
+                }
             # torch.save([project_values, infos], f'{tag}_temp.pth')
             rainbow_bar_plot(project_values, infos, filepath)
 
