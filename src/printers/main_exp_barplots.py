@@ -54,6 +54,7 @@ def plot_main_exp():
                 'colors': thecolors,
                 'xticks': xticks,
             }
+            # torch.save([project_values, infos], f'{tag}_temp.pth')
             rainbow_bar_plot(project_values, infos, filepath)
 
     filepath = output_dir/out_sub_dir/'legend.jpg'

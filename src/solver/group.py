@@ -15,7 +15,8 @@ class GroupSolver(HeuristicsSolver):
         # not using kmeans-pytorch https://github.com/subhadarship/kmeans_pytorch/tree/master => nan issue
         # using Fast Pytorch Kmeans https://github.com/DeMoriarty/fast_pytorch_kmeans
 
-        num_clusters = 256
+        # num_clusters = 256
+        num_clusters = 20
         kmeans = KMeans(n_clusters=num_clusters, mode='euclidean', verbose=0)
         labels = kmeans.fit_predict(self.buyer_preferences)
         labels = labels.cpu()
@@ -27,7 +28,7 @@ class GroupSolver(HeuristicsSolver):
             ## recommend items to group, each member has a vote on which item to choose
             selections = torch.randint(0, self.nftP.M, (_len, ), device=self.args.device)
 
-            for __ in range(256):
+            for __ in range(20): #256
                 for buyer_id in batch_buyer_ids:
                     # choose a better item for buyer_id
                     # follow Lucas et al. Users’ satisfaction in recommendation systems for groups: an approach based on noncooperative games. WWW 2013
