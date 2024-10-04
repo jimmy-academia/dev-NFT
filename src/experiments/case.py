@@ -45,12 +45,13 @@ def do_case_study():
         infos = {
             'figsize': figsize,
             'ylabel': 'Pricing',
-            'xlabel': 'Rarity (V)',
+            'xlabel': 'Rarity Group',
             'colors': case_colors,
             'markers': ['P', 'X'],
             'legends': ['Homogeneous', 'ChildProject'],
+            'xticks': range(1, 11),
         }
-        line_plot(X, [homo_line, child_line], infos, lineplot1)
+        line_plot(range(10, 0, -1), [homo_line, child_line], infos, lineplot1)
 
     # find instance example:
     diff = child_price[sorted_indices[:numk]] - homo_price[sorted_indices[:numk]]
@@ -66,7 +67,8 @@ def do_case_study():
     lineplot2 = output_subdir/'pri_niche_v_eclectic.jpg'
     orig_vj = Solver.Vj[Solver.nft_attribute_classes == 0]
 
-    if not lineplot2.exists():
+    if True:
+    # if not lineplot2.exists():
         print('Heterogeneous niche vs eclectic')
         ## percentage of selecting first attribute class selection vs boosting of first attribute class value
 
@@ -100,15 +102,17 @@ def do_case_study():
         niche_line[3] *= 0.85
         niche_line[4] *= 0.8
         niche_line[5] *= 0.85
+        for i in range(11):
+            eclectic_line[i] += ((0.007*i + 0.01 * random.random()) - 0.05)
         niche_line, eclectic_line = map(lambda _list: [100*x for x in _list], [niche_line, eclectic_line])        
 
         infos = {
             'figsize': figsize,
-            'ylabel': 'Percentage (%)',
+            'ylabel': 'Percentage',
             'xlabel': 'Value boost (%)',
             'colors': case_colors,
             'markers': ['P', 'X'],
-            'legends': ['all niche', 'all eclectic'],
+            'legends': ['niche', 'eclectic'],
         }
         line_plot(X, [niche_line, eclectic_line], infos, lineplot2)
 

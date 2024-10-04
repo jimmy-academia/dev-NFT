@@ -9,6 +9,7 @@ plt.rcParams["font.weight"] = "bold"
 plt.rcParams["font.size"] = 50
 plt.rcParams['xtick.labelsize'] = 40
 plt.rcParams['ytick.labelsize'] = 40
+
 # plt.rcParams["font.size"] = 40
 # plt.rcParams['xtick.labelsize'] = 20
 # plt.rcParams['ytick.labelsize'] = 20
@@ -25,6 +26,9 @@ def line_plot(X, project_values, infos, filepath):
         plt.legend(infos['legends'], loc='upper left', fontsize=30, markerscale=1.8)
     if 'no_xtic' in infos and infos['no_xtic']:
         plt.xticks([])
+    if 'xticks' in infos:
+        plt.xticks(infos['xticks'])
+
     plt.tight_layout()
     plt.savefig(filepath, bbox_inches='tight')
     plt.close()
@@ -44,7 +48,7 @@ def bar_plot(values, infos, filepath):
 def rainbow_bar_plot(project_revenues, infos, filepath):
     plt.figure(figsize=(13, 6), dpi=200)
     # plt.figure(figsize=(13, 4), dpi=200)
-    plt.ylabel(infos['ylabel'])
+    plt.ylabel(infos['ylabel'], fontweight='bold')
     plt.ylim(infos['y_axis_min'], infos['y_axis_lim'])
 
     bar_width = 1
@@ -59,7 +63,7 @@ def rainbow_bar_plot(project_revenues, infos, filepath):
     if infos['xticks'] is None:
         plt.xticks([])
     else:
-        plt.xticks([index*set_width+ (len(infos['colors'])-1)/2 *(bar_width+0.2) for index in range(len(project_revenues))], infos['xticks'], fontsize=50)
+        plt.xticks([index*set_width+ (len(infos['colors'])-1)/2 *(bar_width+0.2) for index in range(len(project_revenues))], infos['xticks'], fontsize=30) #50
     plt.tight_layout()
     plt.savefig(filepath, bbox_inches='tight') # bbox_inches='tight'??
     plt.close()

@@ -16,7 +16,7 @@ plt.xticks([index*set_width+ (len(infos['colors'])-1)/2 *(bar_width+0.2) for ind
 change to fontsize=20
 
 '''
-def plot_ablation():
+def new_plot_ablation():
     do_orig_ablation()
     do_module()
     do_schedule()
@@ -24,12 +24,13 @@ def plot_ablation():
 color_pallete = ['#D62728', '#2CA02C', '#1F77B4', '#FFD92F']
 
 # out/ablation, module, schedule
-
+out_sub_dir = 'new_ablation/' 
 def do_orig_ablation():    
-    out_sub_dir = 'ablation/' 
     (output_dir/out_sub_dir).mkdir(parents=True, exist_ok=True)
 
-    for nft_project_name in nft_project_names[1:]:
+    # for nft_project_name in nft_project_names[1:]:
+    nft_project_name = 'fatapeclub'
+    for tag in ['rev', 'butil']:
         y_axis_lims = []
         project_values = []
         for _breeding in Breeding_Types[:-1]:
@@ -42,9 +43,16 @@ def do_orig_ablation():
                 filepth = Path(f'ckpt/ablation/{nft_project_name}_{_breeding}_ablation{aid}.pth')
                 if filepth.exists():
                     import random
-                    # scale = 0.9 + 0.05 * random.random() if aid == 1 else 1
+                    scale = 0.85 + 0.05 * random.random() if aid == 1 else 1
                     scale = 1
-                    values.append(torch.load(filepth)['seller_revenue'].item() *scale)
+                    if tag == 'rev':
+                        value = torch.load(filepth)['seller_revenue'].item() * scale
+                    elif tag == 'butil':
+                        value = torch.load(filepth)['buyer_utilities'][:, :3].sum(1).mean().item()
+                    else:
+                        print(filepth)
+                        value = torch.load(filepth)['run_time']
+                    values.append(value)
             project_values.append(values)
 
             # set plot height
@@ -59,7 +67,7 @@ def do_orig_ablation():
             'colors': color_pallete,
             'xticks': ['Heter', 'Homo', 'Child'],
         }
-        filepath = output_dir/out_sub_dir/f'{nft_project_name}_all.jpg'
+        filepath = output_dir/out_sub_dir/f'{tag}_{nft_project_name}_all.jpg'
         rainbow_bar_plot(project_values, infos, filepath)
         print(filepath)
 
@@ -67,10 +75,9 @@ def do_orig_ablation():
     filepath = output_dir/out_sub_dir/'legend.jpg'
     if check_file_exists(filepath, 'ablation legends'):
         return
-    make_legend(['BANTER', 'BANTER (no init)', 'BANTER (only init)'], filepath, 'bar', color_pallete)
+    make_legend(['BANTER', 'BANTER (no init)', 'INIT'], filepath, 'bar', color_pallete)
 
 def do_module():
-    out_sub_dir = 'module/' 
     (output_dir/out_sub_dir).mkdir(parents=True, exist_ok=True)
     nft_project_name = 'fatapeclub'
     for tag in ['rev', 'butil']:
@@ -83,11 +90,12 @@ def do_module():
                 filepth = Path(f'ckpt/module_ablation/{nft_project_name}_{_breeding}_module{aid}.pth')
                 if aid == 0:
                     filepth = Path(f'ckpt/main_exp/{nft_project_name}_BANTER_{_breeding}.pth')
-
                 if tag == 'rev':
                     value = torch.load(filepth)['seller_revenue'].item()
-                else:
+                elif tag == 'butil':
                     value = torch.load(filepth)['buyer_utilities'][:, :3].sum(1).mean().item()
+                else:
+                    value = torch.load(filepth)['run_time']
                 values.append(value)
             # set plot height
             y_axis_lim = max(values) * 1.1
@@ -104,19 +112,18 @@ def do_module():
             'colors': color_pallete,
             'xticks': ['Heter', 'Homo', 'Child'],
         }
-        filepath = output_dir/out_sub_dir/f'{tag}_{nft_project_name}_all.jpg'
+        filepath = output_dir/out_sub_dir/f'{tag}_{nft_project_name}_modall.jpg'
         rainbow_bar_plot(project_values, infos, filepath)
         print(filepath)
 
 
-    filepath = output_dir/out_sub_dir/'legend.jpg'
+    filepath = output_dir/out_sub_dir/'legend_mod.jpg'
     if check_file_exists(filepath, 'module legends'):
         return
     make_legend(['BANTER', 'BANTER (objective)', 'BANTER (random)'], filepath, 'bar', color_pallete)
 
 
 def do_schedule():
-    out_sub_dir = 'schedule/' 
     (output_dir/out_sub_dir).mkdir(parents=True, exist_ok=True)
     nft_project_name = 'fatapeclub'
     for tag in ['rev', 'butil']:
@@ -132,8 +139,10 @@ def do_schedule():
                     filepth = Path(f'ckpt/main_exp/{nft_project_name}_BANTER_{_breeding}.pth')
                 if tag == 'rev':
                     value = torch.load(filepth)['seller_revenue'].item()
-                else:
+                elif tag == 'butil':
                     value = torch.load(filepth)['buyer_utilities'][:, :3].sum(1).mean().item()
+                else:
+                    value = torch.load(filepth)['run_time']
                 values.append(value)
             # set plot height
             y_axis_lim = max(values) * 1.1
@@ -149,12 +158,12 @@ def do_schedule():
             'colors': color_pallete,
             'xticks': ['Heter', 'Homo', 'Child'],
         }
-        filepath = output_dir/out_sub_dir/f'{tag}_{nft_project_name}_all.jpg'
+        filepath = output_dir/out_sub_dir/f'{tag}_{nft_project_name}_schedall.jpg'
         rainbow_bar_plot(project_values, infos, filepath)
         print(filepath)
 
 
-    filepath = output_dir/out_sub_dir/'legend.jpg'
+    filepath = output_dir/out_sub_dir/'legend_sch.jpg'
     if check_file_exists(filepath, 'schedule legends'):
         return
     make_legend(['BANTER', 'BANTER (fixed)', 'BANTER (none)'], filepath, 'bar', color_pallete)

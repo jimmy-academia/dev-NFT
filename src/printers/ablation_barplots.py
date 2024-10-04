@@ -26,8 +26,8 @@ def do_orig_ablation():
             for aid in range(3):
                 filepth = Path(f'ckpt/ablation/{nft_project_name}_{_breeding}_ablation{aid}.pth')
                 if filepth.exists():
-                    import random
-                    scale = 0.9 + 0.05 * random.random() if aid == 1 else 1
+                    # import random
+                    # scale = 0.9 + 0.05 * random.random() if aid == 1 else 1
                     values.append(torch.load(filepth)['seller_revenue'].item() *scale)
 
             # set plot height
