@@ -1,8 +1,10 @@
 from .heuristics import RandomSolver, PopularSolver
 from .optimization import GreedySolver, AuctionSolver
 from .group import GroupSolver
-from .recsys import HetRecSysSolver
+from .hetrecsys import HetRecSysSolver
 from .market import BANTERSolver
+
+from .lightgcn import LightGCNSolver
 
 def get_solver(args, _method):
     if _method == 'Random':
@@ -17,5 +19,7 @@ def get_solver(args, _method):
         return GroupSolver(args)
     if _method == 'HetRecSys':
         return HetRecSysSolver(args)
+    if _method == 'LightGCN':
+        return LightGCNSolver(args)
     if _method == 'BANTER':
         return BANTERSolver(args)

@@ -15,7 +15,8 @@ import inspect
 
 # NFT_Projects = ['Yelp']
 
-NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat Ape Club', 'Roaring Leader'] #'StepN'
+NFT_Projects = ['Fat Ape Club'] 
+# NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat Ape Club', 'Roaring Leader'] 
 
 nft_project_names = [''.join(Project_Name.split()).lower() for Project_Name in NFT_Projects]
 # min_purchase = [6, 2, 2, 2, 1, 2, 1]
@@ -23,7 +24,8 @@ min_purchase = [0]
 
 Baseline_Methods = ['Random', 'Popular', 'Auction', 'Group',  'HetRecSys', 'BANTER']
 New_Baseline_Methods = ['Random', 'Popular', 'BANTER', 'Auction', 'Group',  'HetRecSys']
-# Baseline_Methods = ['Random', 'Popular', 'Greedy', 'Auction', 'Group', 'HetRecSys', 'BANTER']
+Extra_Baseline_Methods = ['LightGCN']
+
 Breeding_Types = ['Heterogeneous', 'Homogeneous', 'ChildProject', 'None']
 
 thecolors = ['#FFD92F', '#2CA02C', '#FF7F0E', '#1770af', '#ADD8E6', '#D62728']

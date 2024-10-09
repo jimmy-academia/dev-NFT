@@ -17,11 +17,11 @@ def run_experiments():
     msg = f'''
          {nft_project_names}
         x {Breeding_Types}
-        x {New_Baseline_Methods}'''
+        x {Extra_Baseline_Methods}'''
     print(msg)
     for nft_project_name in nft_project_names:
         args.nft_project_name = nft_project_name
-        for _method in New_Baseline_Methods:
+        for _method in Extra_Baseline_Methods:
             for _breeding in Breeding_Types:
                 result_file = args.checkpoint_dir / f'{nft_project_name}_{_method}_{_breeding}.pth'
             
