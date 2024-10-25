@@ -15,7 +15,7 @@ class BaseSolver:
         cache_dir.mkdir(parents=True, exist_ok=True)
         cache_nft_project_file = cache_dir / f'project.pth'
         if cache_nft_project_file.exists():
-            self.nftP = torch.load(cache_nft_project_file)
+            self.nftP = torch.load(cache_nft_project_file, weights_only=False)
         else:
             nft_project_data = loadj(f'../NFT_data/clean/{args.nft_project_name}.json')
             self.nftP = NFTProject(nft_project_data, args.setN, args.setM, args.nft_project_name)
@@ -86,10 +86,17 @@ class BaseSolver:
 
         buyer_budgets = torch.Tensor(self.nftP.user_budgets).to(self.args.device)
         # scale to  [10, 100]
+        print('new budget settings')
+        # buyer_budgets.clamp_(min=0)  # Ensure that the minimum value is 0
+        # buyer_budgets.sub_(buyer_budgets.min()).div_(buyer_budgets.max() - buyer_budgets.min()).mul_(475).add_(25)
+        # 
+        # print('old budget settings')
         buyer_budgets.clamp_(min=0)  # Ensure that the minimum value is 0
         buyer_budgets.sub_(buyer_budgets.min()).div_(buyer_budgets.max() - buyer_budgets.min()).mul_(90).add_(10)
-        self.buyer_budgets = buyer_budgets
+        
 
+        self.buyer_budgets = buyer_budgets
+        
     def calc_objective_valuations(self, nft_attributes):
         attr_rarity_prod = nft_attributes * self.nft_trait_counts
         attr_rarity_prod = attr_rarity_prod[attr_rarity_prod!= 0].view(-1, self.num_traits)
@@ -270,6 +277,7 @@ class BaseSolver:
         self.pricing.clamp_(min=0)
 
         self.holdings = self.solve_user_demand()
+
         # pricing_demand = self.solve_user_demand()
         # self.holdings = torch.where(self.holdings > pricing_demand, pricing_demand, self.holdings)
 
@@ -278,7 +286,7 @@ class BaseSolver:
         self.holdings *= torch.clamp(self.nft_counts / (self.holdings.sum(0)+epsilon), max=1) ## fit item constraints
         for user_index in make_batch_indexes(self.nftP.N, 1000):
             self.holdings[user_index] *= torch.clamp(self.buyer_budgets[user_index] / ((self.holdings[user_index] * self.pricing).sum(1)+epsilon), max=1).view(-1, 1) ## fit budget constraints
-        # self.holdings *= torch.clamp(self.buyer_budgets / ((self.holdings * self.pricing).sum(1)+epsilon), max=1).view(-1, 1) ## fit budget constraints
+        self.holdings *= torch.clamp(self.buyer_budgets / ((self.holdings * self.pricing).sum(1)+epsilon), max=1).view(-1, 1) ## fit budget constraints
             
 
         self.buyer_utilities = []
@@ -395,8 +403,6 @@ class BaseSolver:
 
         pbar = tqdm(range(16), ncols=88, desc='Solving user demand!', leave=False)
         
-        
-
         user_eps = 1e-4
         for __ in pbar:
             buyer_utility = 0

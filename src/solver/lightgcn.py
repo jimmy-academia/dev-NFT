@@ -1,7 +1,5 @@
-import time
 import random
 import torch
-
 from torch_geometric.nn import LightGCN
 
 from tqdm import tqdm
@@ -20,11 +18,12 @@ class LightGCNSolver(HeuristicsSolver):
         super().__init__(args)
         self.model = LightGCN(self.nftP.N+self.nftP.M, 64, 5)
         self.model.to(self.args.device)
-        self.edge_index, self.neg_edge_index = self.prepare_data()
 
     def initial_assignment(self):
+        self.edge_index, self.neg_edge_index = self.prepare_data()
         self.train_model()
-        _len = 32
+        _len = 5
+        # _len = 32
         dst_index = torch.arange(self.nftP.N, self.nftP.N+self.nftP.M).to(self.args.device)
         _assignment = self.model.recommend(self.edge_index, src_index=torch.arange(self.nftP.N), dst_index=dst_index, k=_len)
         _assignment = _assignment - self.nftP.N
@@ -33,7 +32,7 @@ class LightGCNSolver(HeuristicsSolver):
 
     def prepare_data(self):
         # use self.Uij = preference dot attribute to derive edge_index
-        k = num_negatives = 128
+        k = self.num_negatives = 128
 
         __, topk_indices = torch.topk(self.Uij, k, dim=1)
 
@@ -43,18 +42,20 @@ class LightGCNSolver(HeuristicsSolver):
                 edge_index.append([i, j.item()+ self.nftP.N])
 
         edge_index = torch.tensor(edge_index).T 
+        return edge_index, self.gen_neg_edge(edge_index)
 
+    def gen_neg_edge(self, edge_index):
         neg_edge_index = []
         for user in tqdm(edge_index[0].unique(), ncols=80, desc='prepare neg edge'):
-            for _ in range(num_negatives):
+            for _ in range(self.num_negatives):
                 negative_item = torch.randint(self.nftP.N, self.nftP.N+self.nftP.M, (1,))
                 while torch.any(torch.logical_and(edge_index[0] == user, edge_index[1] == negative_item)):
                     negative_item = torch.randint(self.nftP.N, self.nftP.N+self.nftP.M, (1,))
                 neg_edge_index.append([user.item(), negative_item.item()])
         
         neg_edge_index = torch.tensor(neg_edge_index).T
+        return neg_edge_index
 
-        return edge_index, neg_edge_index
 
     def train_model(self):
         
@@ -62,7 +63,6 @@ class LightGCNSolver(HeuristicsSolver):
         self.edge_index = self.edge_index.to(self.args.device)
         self.neg_edge_index = self.neg_edge_index.to(self.args.device)
 
-        start = time.time()
         # Training loop
         pbar = tqdm(range(1280), ncols=90, desc='LightGCN training')
         for epoch in pbar:
@@ -85,5 +85,4 @@ class LightGCNSolver(HeuristicsSolver):
             pbar.set_postfix({'Epoch':{epoch+1}, 'Loss': f'{loss.cpu().item():.4f}'})
 
 
-        print(f'LightGCN training runtime: {time.time() - start} s')
 

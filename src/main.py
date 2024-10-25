@@ -7,6 +7,7 @@ __author__ = "Jimmy Yeh"
 import argparse
 from data_preprocessing import prepare_nft_data
 from experiments import *
+from utils import *
 
 def main():
     """
@@ -39,4 +40,5 @@ def main():
 
 
 if __name__ == "__main__":
+    set_seeds(2)
     main()

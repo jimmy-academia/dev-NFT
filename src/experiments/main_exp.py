@@ -26,7 +26,8 @@ def run_experiments():
                 result_file = args.checkpoint_dir / f'{nft_project_name}_{_method}_{_breeding}.pth'
             
                 dd = 3 if _method == 'BANTER' else 2
-                if result_file.exists():
+                # if result_file.exists():
+                if False:
                     print(f'|> {result_file} exists <|')
                     data = torch.load(result_file)
                     seller_revenue = data['seller_revenue'].item()

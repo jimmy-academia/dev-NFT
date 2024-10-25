@@ -1,8 +1,10 @@
-import random
+import copy
 import torch
+import random
 from tqdm import tqdm
 
-from .consisrec import GraphConsis
+from torch_geometric.nn import LightGCN
+
 from .heuristics import HeuristicsSolver
 
 from utils import *
@@ -10,83 +12,100 @@ from utils import *
 class ReciprocalSolver(HeuristicsSolver):
     def __init__(self, args):
         super().__init__(args)
-        args.embed_dim = 16
-        args.percent = 0.6
-        args.reg = 1
-
-        if not args.large:
-            self.do_preparations()
-
-    def do_preparations(self):
-        self.prepare_Nums_Lists_Data()
-        self.model = GraphConsis(self.args, self.Nums, self.Lists)
+        self.model = LightGCN(self.nftP.N+self.nftP.M, 64, 5)
         self.model.to(self.args.device)
 
-    def prepare_Nums_Lists_Data(self):
-        '''
-        Nums = user_num, item_num
-        Lists = [history_u_lists, history_ur_lists, history_v_lists, history_vr_lists, social_adj_lists, item_adj_lists]
-
-        '''
-        self.Nums = [self.nftP.N, self.nftP.M]
-        history_u_lists = [x.tolist() for x in self.Uij.topk(10)[1]]
-        history_ur_lists = [[5]*10]*self.nftP.N 
-        history_v_lists = [] 
-        history_vr_lists = []
-        for j in tqdm(range(self.nftP.M), ncols=88, desc='make Lists', leave=False):
-            u_list = [i for i in range(self.nftP.N) if j in history_u_lists[i]]
-            if len(u_list) == 0:
-                u = random.choice(range(self.nftP.N))
-                ulist = [u]
-                history_u_lists[u].append(j)
-                history_ur_lists[u].append(5)
-            history_v_lists.append(u_list)
-            history_vr_lists.append([5]*len(u_list))
-
-        social_adj_lists = self.find_connections(self.buyer_preferences)
-        item_adj_lists = self.find_connections(self.nft_attributes)
-        self.Lists = [history_u_lists, history_ur_lists, history_v_lists, history_vr_lists, social_adj_lists, item_adj_lists]
-
-        self.Data = []
-        for i in range(self.nftP.N):
-            for j in history_u_lists[i]:
-                self.Data.append([i,j,5])
-
-    def find_connections(self, data):
-        data = data.float()
-        adj_lists = []
-        for batch_indexes in make_batch_indexes(len(data), 128):
-            distances = torch.cdist(data[batch_indexes], data)
-            _, k_nearest_neighbors = distances.topk(16, largest=False, dim=1)
-            adj_lists += [vec.tolist() for vec in k_nearest_neighbors]
-
-        return adj_lists
-
-    def train_model(self):
-        train_data = torch.utils.data.TensorDataset(torch.LongTensor(self.Data))
-        train_loader = torch.utils.data.DataLoader(train_data, batch_size=64, shuffle=True, drop_last=True)
-
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-2, weight_decay=1e-5)
-        best_validate = 1e10
-        best_model_state_dict = endure_count = va_loss = 0
-        self.model.train()
-        for epoch in range(10):
-            for data in tqdm(train_loader, ncols=88, desc=f'train epoch:{epoch}', leave=False):
-                batch_u = data[0][:, 0].to(self.args.device)
-                batch_v = data[0][:, 1].to(self.args.device)
-                labels = data[0][:, 2].to(self.args.device)
-                loss = self.model.loss(batch_u, batch_v, labels)
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
     def initial_assignment(self):
-        self.train_model()
-        _len = 32
-        _assignment = torch.ones((self.nftP.N, _len), device=self.args.device).long()
-        with torch.no_grad():
-            for i in range(self.nftP.N):
-                topk = (self.model.u2e.weight[i] @ self.model.v2e.weight.T).topk(_len)[1]
-                _assignment[i] = topk
+        self.edge_index, self.neg_edge_index = self.prepare_data()
+        self.edge_index = self.edge_index.to(self.args.device)
 
-        return _assignment
+        ## the full thing!
+        self.train(self.model, self.edge_index, self.neg_edge_index)
+        _len = 32
+        dst_index = torch.arange(self.nftP.N, self.nftP.N+self.nftP.M).to(self.args.device)
+        _assignment = self.model.recommend(self.edge_index, src_index=torch.arange(self.nftP.N), dst_index=dst_index, k=_len)
+
+        ## reciprocal train 
+        '''
+        A = buyer B = NFT, T_A ~ recommend to A, T_B ~ recommend to B;
+        T_A = {above _len assigned}; T_B = {all user}
+        D_10 = empty
+        split all pair to D_01, D_11
+        finetune 2 more model with bpr loss
+        '''
+        model_01 = copy.deepcopy(self.model)
+        model_11 = copy.deepcopy(self.model)
+
+        r_edge_index = []
+        for i in range(self.nftP.N):
+            for j in _assignment[i]:
+                r_edge_index.append([i, j.item()])
+
+
+        r_edge_index = torch.tensor(r_edge_index).T 
+        neg_r_edge_index = self.gen_neg_edge(r_edge_index, _len)
+        self.train(model_11, r_edge_index, neg_r_edge_index, num_epochs=128)
+        self.train(model_01, neg_r_edge_index, r_edge_index, num_epochs=32)
+
+        ## rerank, final assignment
+        ui_edge = [torch.arange(self.nftP.N).repeat_interleave(self.nftP.M), dst_index.tile(self.nftP.N)]
+        pred11 = model_11.predict_link(self.edge_index, ui_edge, prob=True)
+        pred01 = model_01.predict_link(self.edge_index, ui_edge, prob=True)
+        prediction = 0.5 * (pred11 + pred01)
+        prediction = prediction.view(self.nftP.N, self.nftP.M)
+        __, topk_indices = torch.topk(prediction, _len, dim=1)
+
+        return topk_indices
+
+    def prepare_data(self):
+        # use self.Uij = preference dot attribute to derive edge_index
+        k = num_negatives = 256
+
+        __, topk_indices = torch.topk(self.Uij, k, dim=1)
+
+        edge_index = []
+        for i in range(self.nftP.N):
+            for j in topk_indices[i]:
+                edge_index.append([i, j.item()+ self.nftP.N])
+
+        edge_index = torch.tensor(edge_index).T 
+        return edge_index, self.gen_neg_edge(edge_index, k)
+
+    def gen_neg_edge(self, edge_index, k=128):
+        neg_edge_index = []
+        for user in tqdm(edge_index[0].unique(), ncols=80, desc='prepare neg edge'):
+            for _ in range(k):
+                negative_item = torch.randint(self.nftP.N, self.nftP.N+self.nftP.M, (1,))
+                while torch.any(torch.logical_and(edge_index[0] == user, edge_index[1] == negative_item)):
+                    negative_item = torch.randint(self.nftP.N, self.nftP.N+self.nftP.M, (1,))
+                neg_edge_index.append([user.item(), negative_item.item()])
+        
+        neg_edge_index = torch.tensor(neg_edge_index).T
+        return neg_edge_index
+
+    def train(self, model, pos_edge, neg_edge, num_epochs=1280, desc='LightGCN training'):
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+        pos_edge, neg_edge = pos_edge.to(self.args.device), neg_edge.to(self.args.device)
+        # Training loop
+        pbar = tqdm(range(num_epochs), ncols=90, desc=desc, leave=False)
+        for epoch in pbar:
+            model.train()
+            optimizer.zero_grad()
+            
+            # Forward pass to compute rankings
+            nd_embeddings = model.get_embedding(self.edge_index)
+
+            pos_src, pos_dst = pos_edge
+            neg_src, neg_dst = neg_edge
+
+            # Calculate positive and negative edge rankings (dot product of embeddings)
+            pos_edge_rank = (nd_embeddings[pos_src] * nd_embeddings[pos_dst]).sum(dim=-1)
+            neg_edge_rank = (nd_embeddings[neg_src] * nd_embeddings[neg_dst]).sum(dim=-1)
+
+            loss = model.recommendation_loss(pos_edge_rank, neg_edge_rank)
+            loss.backward()
+            optimizer.step()
+            pbar.set_postfix({'Epoch':{epoch+1}, 'Loss': f'{loss.cpu().item():.4f}'})
+        
+        
+

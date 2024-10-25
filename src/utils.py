@@ -15,18 +15,21 @@ import inspect
 
 # NFT_Projects = ['Yelp']
 
+# NFT_Projects = ['Bored Ape Yacht Club', 'Crypto Kitties', 'Roaring Leader'] 
 NFT_Projects = ['Fat Ape Club'] 
 # NFT_Projects = ['Axies Infinity', 'Bored Ape Yacht Club', 'Crypto Kitties', 'Fat Ape Club', 'Roaring Leader'] 
 
 nft_project_names = [''.join(Project_Name.split()).lower() for Project_Name in NFT_Projects]
-# min_purchase = [6, 2, 2, 2, 1, 2, 1]
-min_purchase = [0]
+min_purchase = [6, 2, 2, 2, 1, 2, 1]
+# min_purchase = [0]
 
 Baseline_Methods = ['Random', 'Popular', 'Auction', 'Group',  'HetRecSys', 'BANTER']
 New_Baseline_Methods = ['Random', 'Popular', 'BANTER', 'Auction', 'Group',  'HetRecSys']
-Extra_Baseline_Methods = ['LightGCN']
+Extra_Baseline_Methods = ['Random', 'Popular']
+# Extra_Baseline_Methods = ['Random', 'Popular', 'LightGCN', 'Reciprocal', 'NCF', 'BANTER']
 
-Breeding_Types = ['Heterogeneous', 'Homogeneous', 'ChildProject', 'None']
+Breeding_Types = ['Heterogeneous', 'Homogeneous', 'ChildProject']
+# Breeding_Types = ['Heterogeneous', 'Homogeneous', 'ChildProject', 'None']
 
 thecolors = ['#FFD92F', '#2CA02C', '#FF7F0E', '#1770af', '#ADD8E6', '#D62728']
 # thecolors = ['#FFD92F', '#2CA02C', '#FF7F0E', '#1F77B4', '#008080', '#ADD8E6', '#D62728']
@@ -58,14 +61,14 @@ def default_args():
     args.gamma2 = 0.001
     return args
 
-# def set_seeds(seed):
-#     random.seed(seed)
-#     os.environ['PYTHONHASHSEED'] = str(seed)
-#     np.random.seed(seed)
-#     torch.manual_seed(seed)
-#     torch.cuda.manual_seed(seed)
-#     torch.backends.cudnn.deterministic = True
-#     torch.backends.cudnn.benchmark = True
+def set_seeds(seed):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = True
 
 class NamespaceEncoder(json.JSONEncoder):
   def default(self, obj):
@@ -178,7 +181,7 @@ def torch_cleansave(obj, path):
     torch.save(obj, path)
 
 def torch_cleanload(path, device):
-    obj = torch.load(path)
+    obj = torch.load(path, weights_only=True)
     return deep_to_device(obj, device)
 
 def check_file_exists(filepath, item_name=''):

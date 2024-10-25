@@ -2,7 +2,7 @@ import torch
 from tqdm import tqdm
 
 from .base import BaseSolver
-# from utils import *
+from utils import *
 
 class BANTERSolver(BaseSolver):
     def __init__(self, args):
@@ -29,7 +29,7 @@ class BANTERSolver(BaseSolver):
 
         ## demand-based optimization
         eps = 1001
-        pbar = tqdm(range(30), ncols=88, desc='BANTER Solver!') #64
+        pbar = tqdm(range(10), ncols=88, desc='BANTER Solver!') #64
         self.pricing_list.append(self.pricing)
         if self.args.ablation_id == 2:
             return

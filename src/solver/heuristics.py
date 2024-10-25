@@ -5,7 +5,8 @@ from utils import *
 class HeuristicsSolver(BaseSolver):
     def __init__(self, args):
         super().__init__(args)
-        self.k = 20
+        # self.k = 128
+        self.k = 2
 
     def initial_assignment(self):
         raise NotImplementedError
@@ -36,7 +37,7 @@ class RandomSolver(HeuristicsSolver):
     def __init__(self, args):
         super().__init__(args)
     def initial_assignment(self):
-        random_assignments = torch.stack([torch.randperm(self.nftP.M)[:1] for _ in range(self.nftP.N)]).to(self.args.device)
+        random_assignments = torch.stack([torch.randperm(self.nftP.M)[:2] for _ in range(self.nftP.N)]).to(self.args.device)
         return random_assignments
 
 class PopularSolver(HeuristicsSolver):
@@ -44,5 +45,5 @@ class PopularSolver(HeuristicsSolver):
         super().__init__(args)
 
     def initial_assignment(self):
-        favorite_assignments = (self.Uij * self.Vj).topk(self.k)[1]  #shape N, k
+        favorite_assignments = (self.Uij * self.Vj).topk(100)[1][:, -self.k:]  #shape N, k
         return favorite_assignments

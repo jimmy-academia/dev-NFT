@@ -1,7 +1,7 @@
-**/bin
-**/ckpt
-**/NFT_data
-**/out
+**/bin/
+**/ckpt/
+**/NFT_data/
+**/out/
 
 # Visual Studio Code
 .vscode/
